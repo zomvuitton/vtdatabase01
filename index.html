@@ -1615,8 +1615,8 @@
             <div class="dash-card-title" style="margin-bottom:16px">Veri Kaynakları</div>
             <div id="sourcesList" style="display:flex;flex-direction:column;gap:8px"></div>
             <div style="display:flex;gap:8px;margin-top:12px">
-              <input class="form-input" id="newSourceInput" placeholder="Yeni kaynak adı..." style="flex:1">
-              <button class="btn btn-ghost" onclick="addSource()">+ Ekle</button>
+              <input class="form-input" id="newSourceInput" placeholder="Yeni kaynak adı..." style="flex:1" onkeydown="if(event.key==='Enter')addSource()">
+              <button type="button" class="btn btn-ghost" onclick="addSource()">+ Ekle</button>
             </div>
           </div>
 
@@ -1664,6 +1664,59 @@
       </div>
     </div>
 
+
+    <!-- MODAL: Şirket Düzenle / Sil -->
+    <div class="modal-overlay" id="editCompanyModal" onclick="if(event.target===this)closeEditCompanyModal()">
+      <div class="modal">
+        <div class="modal-title">
+          Şirketi Düzenle
+          <button class="modal-close" onclick="closeEditCompanyModal()">✕</button>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Şirket Adı *</label><input class="form-input" id="ec-name"></div>
+          <div class="form-group"><label class="form-label">Domain</label><input class="form-input" id="ec-domain"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Sektör</label><input class="form-input" id="ec-sector"></div>
+          <div class="form-group"><label class="form-label">Şehir</label><input class="form-input" id="ec-city"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Veri Kalitesi</label>
+            <select class="form-select" id="ec-quality">
+              <option value="clean">Temiz</option>
+              <option value="incomplete">Eksik</option>
+              <option value="dirty">Kirli</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Dönüş Durumu</label>
+            <select class="form-select" id="ec-response">
+              <option value="none">Dönüş Yok</option>
+              <option value="positive">Olumlu</option>
+              <option value="negative">Olumsuz</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">İletişim Bilgileri</label>
+          <div id="ec-contacts" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
+          <div style="display:flex;gap:6px">
+            <button type="button" class="btn btn-ghost" style="font-size:11px;padding:7px 12px" onclick="addEditContact('email')">+ Mail</button>
+            <button type="button" class="btn btn-ghost" style="font-size:11px;padding:7px 12px" onclick="addEditContact('phone')">+ Telefon</button>
+          </div>
+        </div>
+
+        <div class="modal-actions" style="justify-content:space-between">
+          <button type="button" class="btn btn-ghost" style="color:var(--red)" onclick="deleteCompany()">🗑 Şirketi Sil</button>
+          <div style="display:flex;gap:8px">
+            <button type="button" class="btn btn-ghost" onclick="closeEditCompanyModal()">İptal</button>
+            <button type="button" class="btn btn-primary" onclick="saveEditCompany()">Kaydet</button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div><!-- /main -->
 </div>
 
@@ -1729,10 +1782,12 @@ function renderSourcesList() {
 
 function addSource() {
   const input = document.getElementById('newSourceInput');
+  if (!input) return;
   const val = input.value.trim();
   if (!val) return;
   sourcesData.push(val);
   input.value = '';
+  input.focus();
   renderSourcesList();
 }
 
@@ -2721,14 +2776,18 @@ function updateCounts() {
 function selectCompany(id) {
   selectedId = id;
   renderList();
+  renderCompanyDetail(id);
+}
 
-  const c = companies.find(x => x.id === id);
+function renderCompanyDetail(id) {
+  const co = companies.find(x => x.id === id);
+  if (!co) return;
   const panel = document.getElementById('detailPanel');
-  const color = getColor(c.name);
+  const color = getColor(co.name);
 
-  const historyHTML = c.history.length === 0
+  const historyHTML = co.history.length === 0
     ? `<div style="color:var(--muted);font-size:11.5px;padding:8px 0;">Henüz kampanya geçmişi yok</div>`
-    : c.history.map(h => {
+    : co.history.map(h => {
         const dot = h.response === 'positive' ? 'var(--green)' : h.response === 'negative' ? 'var(--red)' : 'var(--muted)';
         return `
         <div class="history-row">
@@ -2741,39 +2800,45 @@ function selectCompany(id) {
         </div>`;
       }).join('');
 
-  const contactsHTML = c.contacts.map(ct => `
-    <div class="contact-row">
-      <span class="contact-icon">${ct.type === 'email' ? '✉️' : '📞'}</span>
-      <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${ct.value}</span>
-      ${ct.primary ? `<span class="badge badge-blue contact-primary">Birincil</span>` : ''}
-    </div>`).join('');
+  const contactsHTML = co.contacts.length
+    ? co.contacts.map(ct => `
+      <div class="contact-row">
+        <span class="contact-icon">${ct.type === 'email' ? '✉️' : '📞'}</span>
+        <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${ct.value}</span>
+        ${ct.primary ? `<span class="badge badge-muted contact-primary">Birincil</span>` : ''}
+      </div>`).join('')
+    : `<div style="color:var(--muted);font-size:11.5px">İletişim bilgisi yok</div>`;
 
-  const sourcesHTML = c.sources.map(s =>
-    `<span class="badge badge-muted">${s}</span>`
-  ).join(' ');
+  const sourcesHTML = co.sources.map(s => `<span class="badge badge-muted">${s}</span>`).join(' ');
 
   panel.innerHTML = `
     <div class="detail-header">
-      <div class="detail-avatar" style="background:${color}">${getInitials(c.name)}</div>
-      <div class="detail-name">${c.name}</div>
-      <div style="font-size:12px;color:var(--muted)">${c.sector} · ${c.city}</div>
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px">
+        <div class="detail-avatar" style="background:${color}">${getInitials(co.name)}</div>
+        <div style="display:flex;gap:6px">
+          <button type="button" class="btn btn-ghost" style="font-size:11px;padding:7px 12px" onclick="openEditCompanyModal(${co.id})">✎ Düzenle</button>
+          <button type="button" class="btn btn-ghost" style="font-size:11px;padding:7px 12px;color:var(--red)" onclick="confirmDeleteCompany(${co.id})">🗑</button>
+        </div>
+      </div>
+      <div class="detail-name">${co.name}</div>
+      <div style="font-size:12px;color:var(--muted)">${co.sector} · ${co.city}</div>
       <div class="detail-badges">
-        ${responseBadge(c.response, c.quality)}
-        ${c.domain ? `<span class="badge badge-muted">🌐 ${c.domain}</span>` : ''}
+        ${responseBadge(co.response, co.quality)}
+        ${co.domain ? `<span class="badge badge-muted">🌐 ${co.domain}</span>` : ''}
       </div>
     </div>
 
     <div class="stats-row">
       <div class="stat-card">
-        <div class="stat-value">${c.contacts.filter(x=>x.type==='email').length}</div>
+        <div class="stat-value">${co.contacts.filter(x=>x.type==='email').length}</div>
         <div class="stat-label">Mail</div>
       </div>
       <div class="stat-card">
-        <div class="stat-value">${c.contacts.filter(x=>x.type==='phone').length}</div>
+        <div class="stat-value">${co.contacts.filter(x=>x.type==='phone').length}</div>
         <div class="stat-label">Telefon</div>
       </div>
       <div class="stat-card">
-        <div class="stat-value">${c.history.length}</div>
+        <div class="stat-value">${co.history.length}</div>
         <div class="stat-label">Kampanya</div>
       </div>
     </div>
@@ -2783,18 +2848,102 @@ function selectCompany(id) {
         <div class="detail-section-title">İletişim Bilgileri</div>
         ${contactsHTML}
       </div>
-
       <div class="detail-section">
         <div class="detail-section-title">Kaynaklar</div>
         <div style="display:flex;gap:6px;flex-wrap:wrap">${sourcesHTML}</div>
       </div>
-
       <div class="detail-section">
         <div class="detail-section-title">Kampanya Geçmişi</div>
         ${historyHTML}
       </div>
     </div>
   `;
+}
+
+// ── EDIT COMPANY ──
+let editContactsTemp = [];
+
+function openEditCompanyModal(id) {
+  const co = companies.find(x => x.id === id);
+  if (!co) return;
+  selectedId = id;
+  document.getElementById('ec-name').value     = co.name;
+  document.getElementById('ec-domain').value   = co.domain || '';
+  document.getElementById('ec-sector').value   = co.sector || '';
+  document.getElementById('ec-city').value     = co.city   || '';
+  document.getElementById('ec-quality').value  = co.quality;
+  document.getElementById('ec-response').value = co.response;
+  editContactsTemp = co.contacts.map(ct => ({...ct}));
+  renderEditContacts();
+  document.getElementById('editCompanyModal').classList.add('open');
+}
+
+function closeEditCompanyModal() {
+  document.getElementById('editCompanyModal').classList.remove('open');
+}
+
+function renderEditContacts() {
+  document.getElementById('ec-contacts').innerHTML = editContactsTemp.map((ct, i) => `
+    <div style="display:flex;gap:6px;align-items:center">
+      <span style="font-size:13px;width:20px;text-align:center">${ct.type==='email'?'✉️':'📞'}</span>
+      <input class="form-input" style="flex:1;padding:8px 10px;font-size:12px"
+        value="${ct.value}"
+        oninput="editContactsTemp[${i}].value=this.value"
+        placeholder="${ct.type==='email'?'mail@ornek.com':'+90 5xx xxx xx xx'}">
+      <button type="button" onclick="editContactsTemp.splice(${i},1);renderEditContacts()"
+        style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:0 4px">✕</button>
+    </div>`).join('');
+}
+
+function addEditContact(type) {
+  editContactsTemp.push({ type, value: '', primary: editContactsTemp.filter(c=>c.type===type).length===0 });
+  renderEditContacts();
+}
+
+function saveEditCompany() {
+  const name = document.getElementById('ec-name').value.trim();
+  if (!name) { document.getElementById('ec-name').focus(); return; }
+  const co = companies.find(x => x.id === selectedId);
+  if (!co) return;
+  co.name     = name;
+  co.domain   = document.getElementById('ec-domain').value.trim();
+  co.sector   = document.getElementById('ec-sector').value.trim() || co.sector;
+  co.city     = document.getElementById('ec-city').value.trim()   || co.city;
+  co.quality  = document.getElementById('ec-quality').value;
+  co.response = document.getElementById('ec-response').value;
+  co.contacts = editContactsTemp.filter(ct => ct.value.trim());
+  closeEditCompanyModal();
+  renderList();
+  renderCompanyDetail(selectedId);
+}
+
+function confirmDeleteCompany(id) {
+  const co = companies.find(x => x.id === id);
+  if (!co) return;
+  if (!confirm(co.name + ' silinsin mi? Bu işlem geri alınamaz.')) return;
+  deleteCompanyById(id);
+}
+
+function deleteCompany() {
+  if (!selectedId) return;
+  const co = companies.find(x => x.id === selectedId);
+  if (!co) return;
+  if (!confirm(co.name + ' silinsin mi? Bu işlem geri alınamaz.')) return;
+  closeEditCompanyModal();
+  deleteCompanyById(selectedId);
+}
+
+function deleteCompanyById(id) {
+  const idx = companies.findIndex(x => x.id === id);
+  if (idx === -1) return;
+  companies.splice(idx, 1);
+  selectedId = null;
+  renderList();
+  document.getElementById('detailPanel').innerHTML = `
+    <div class="detail-empty">
+      <div class="detail-empty-icon">🏢</div>
+      <div class="detail-empty-text">Detay için şirket seç</div>
+    </div>`;
 }
 
 // ── DASHBOARD ──
