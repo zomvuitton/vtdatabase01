@@ -1766,6 +1766,7 @@ function saveCredentials() {
   if (p) currentUser.password = p;
   document.getElementById('settingsUsername').textContent = currentUser.username;
   document.getElementById('set-password').value = '';
+  saveToStorage();
   msg.textContent = '✓ Kaydedildi';
   setTimeout(() => msg.textContent = '', 2000);
 }
@@ -1786,6 +1787,7 @@ function addSource() {
   const val = input.value.trim();
   if (!val) return;
   sourcesData.push(val);
+  saveToStorage();
   input.value = '';
   input.focus();
   renderSourcesList();
@@ -1793,6 +1795,7 @@ function addSource() {
 
 function removeSource(i) {
   sourcesData.splice(i, 1);
+  saveToStorage();
   renderSourcesList();
 }
 
@@ -2122,6 +2125,7 @@ function selectDup(id) {
 function mergeDup(id) {
   const d = duplicatesData.find(x => x.id === id);
   d.resolved = true;
+  saveToStorage();
   selectedDupId = null;
   renderDuplicates();
   document.getElementById('dupDetail').innerHTML = `<div style="height:100%;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;color:var(--muted)"><div style="font-size:36px;opacity:.3">✅</div><div style="font-size:12px">Birleştirildi</div></div>`;
@@ -2129,6 +2133,7 @@ function mergeDup(id) {
 
 function dismissDup(id) {
   duplicatesData = duplicatesData.filter(x => x.id !== id);
+  saveToStorage();
   selectedDupId = null;
   renderDuplicates();
   document.getElementById('dupDetail').innerHTML = `<div style="height:100%;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;color:var(--muted)"><div style="font-size:36px;opacity:.3">⚠️</div><div style="font-size:12px">Detay için çift seç</div></div>`;
@@ -2137,12 +2142,14 @@ function dismissDup(id) {
 function unresolve(id) {
   const d = duplicatesData.find(x => x.id === id);
   d.resolved = false;
+  saveToStorage();
   renderDuplicates();
   selectDup(id);
 }
 
 function autoMergeAll() {
   duplicatesData.filter(d => !d.resolved && d.score >= 90).forEach(d => d.resolved = true);
+  saveToStorage();
   selectedDupId = null;
   renderDuplicates();
   document.getElementById('dupDetail').innerHTML = `<div style="height:100%;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;color:var(--muted)"><div style="font-size:36px;opacity:.3">✅</div><div style="font-size:12px">Yüksek skorlular birleştirildi</div></div>`;
@@ -2175,6 +2182,7 @@ function addCompany() {
   };
 
   companies.unshift(newCompany);
+  saveToStorage();
   closeAddCompanyModal();
   ['ac-name','ac-domain','ac-sector','ac-city','ac-email','ac-phone'].forEach(id => document.getElementById(id).value = '');
   renderList();
@@ -2208,6 +2216,7 @@ function handleCSVImport(input) {
       });
       added++;
     });
+    saveToStorage();
     renderList();
     document.getElementById('importResultBody').innerHTML = `
       <div style="display:flex;flex-direction:column;gap:10px">
@@ -2398,6 +2407,7 @@ function closeFileModal(e) {
 function deleteSelectedFile() {
   if (!selectedFileId) return;
   filesData = filesData.filter(f => f.id !== selectedFileId);
+  saveToStorage();
   document.getElementById('fileDetailModal').classList.remove('open');
   renderFiles();
 }
@@ -2418,6 +2428,7 @@ function handleFileUpload(input) {
       uploadedAt: new Date().toLocaleDateString('tr-TR', { day:'2-digit', month:'short', year:'numeric' })
     });
   });
+  saveToStorage();
   renderFiles();
   input.value = '';
 }
@@ -2639,6 +2650,7 @@ function createCampaign() {
   const now     = new Date();
   const dateStr = now.toLocaleDateString('tr-TR', { day:'2-digit', month:'short', year:'numeric' });
   campaigns.unshift({ id: Date.now(), name, subject, body, status, segment, sentAt: status==='sent'?dateStr:null, sends: [] });
+  saveToStorage();
   closeNewCampaignModal();
   renderCampList();
   ['newCampName','newCampSubject','newCampBody'].forEach(id => document.getElementById(id).value = '');
@@ -2912,6 +2924,7 @@ function saveEditCompany() {
   co.quality  = document.getElementById('ec-quality').value;
   co.response = document.getElementById('ec-response').value;
   co.contacts = editContactsTemp.filter(ct => ct.value.trim());
+  saveToStorage();
   closeEditCompanyModal();
   renderList();
   renderCompanyDetail(selectedId);
@@ -2937,6 +2950,7 @@ function deleteCompanyById(id) {
   const idx = companies.findIndex(x => x.id === id);
   if (idx === -1) return;
   companies.splice(idx, 1);
+  saveToStorage();
   selectedId = null;
   renderList();
   document.getElementById('detailPanel').innerHTML = `
@@ -3090,7 +3104,52 @@ function renderSourceTable() {
     }).join('');
 }
 
+
+// ── LOCAL STORAGE ──
+const LS_KEYS = {
+  companies: 'harman_companies',
+  campaigns: 'harman_campaigns',
+  files:     'harman_files',
+  sources:   'harman_sources',
+  dupes:     'harman_duplicates',
+  auth:      'harman_auth',
+};
+
+function saveToStorage() {
+  try {
+    localStorage.setItem(LS_KEYS.companies, JSON.stringify(companies));
+    localStorage.setItem(LS_KEYS.campaigns, JSON.stringify(campaigns));
+    localStorage.setItem(LS_KEYS.files,     JSON.stringify(filesData));
+    localStorage.setItem(LS_KEYS.sources,   JSON.stringify(sourcesData));
+    localStorage.setItem(LS_KEYS.dupes,     JSON.stringify(duplicatesData));
+    localStorage.setItem(LS_KEYS.auth,      JSON.stringify(currentUser));
+  } catch(e) { console.warn('Storage write failed', e); }
+}
+
+function loadFromStorage() {
+  try {
+    const co = localStorage.getItem(LS_KEYS.companies);
+    if (co) { companies.length = 0; JSON.parse(co).forEach(x => companies.push(x)); }
+
+    const ca = localStorage.getItem(LS_KEYS.campaigns);
+    if (ca) { campaigns.length = 0; JSON.parse(ca).forEach(x => campaigns.push(x)); }
+
+    const fi = localStorage.getItem(LS_KEYS.files);
+    if (fi) { filesData.length = 0; JSON.parse(fi).forEach(x => filesData.push(x)); }
+
+    const so = localStorage.getItem(LS_KEYS.sources);
+    if (so) { sourcesData.length = 0; JSON.parse(so).forEach(x => sourcesData.push(x)); }
+
+    const du = localStorage.getItem(LS_KEYS.dupes);
+    if (du) { duplicatesData.length = 0; JSON.parse(du).forEach(x => duplicatesData.push(x)); }
+
+    const au = localStorage.getItem(LS_KEYS.auth);
+    if (au) { const parsed = JSON.parse(au); currentUser.username = parsed.username; currentUser.password = parsed.password; }
+  } catch(e) { console.warn('Storage read failed', e); }
+}
+
 // ── INIT ──
+loadFromStorage();
 renderList();
 </script>
 </body>
