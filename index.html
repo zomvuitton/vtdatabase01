@@ -1,0 +1,2410 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>CRM Panel</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:        #0a0a0a;
+    --surface:   #111111;
+    --surface2:  #1a1a1a;
+    --surface3:  #242424;
+    --border:    rgba(255,255,255,0.08);
+    --accent:    #d4d4d4;
+    --accent2:   #a0a0a0;
+    --green:     #c8c8c8;
+    --red:       #606060;
+    --amber:     #909090;
+    --text:      #efefef;
+    --muted:     #555555;
+    --muted2:    #888888;
+    --font-head: 'Syne', sans-serif;
+    --font-mono: 'DM Mono', monospace;
+    --radius:    14px;
+    --sidebar:   72px;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-mono);
+    overflow: hidden;
+  }
+
+  /* ── LAYOUT ── */
+  .app {
+    display: grid;
+    grid-template-columns: var(--sidebar) 1fr;
+    grid-template-rows: 1fr;
+    height: 100vh;
+    height: 100dvh;
+  }
+
+  /* ── SIDEBAR ── */
+  .sidebar {
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px 0;
+    gap: 6px;
+    z-index: 10;
+  }
+
+  .sidebar-logo {
+    width: 38px;
+    height: 38px;
+    background: linear-gradient(135deg, #404040, #1e1e1e);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-head);
+    font-weight: 800;
+    font-size: 16px;
+    color: white;
+    margin-bottom: 16px;
+    flex-shrink: 0;
+  }
+
+  .nav-item {
+    width: 46px;
+    height: 46px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    color: var(--muted);
+    font-size: 18px;
+    position: relative;
+  }
+
+  .nav-item:hover { background: var(--surface2); color: var(--text); }
+  .nav-item.active { background: rgba(255,255,255,0.08); color: var(--accent); }
+
+  .nav-item .tooltip {
+    position: absolute;
+    left: calc(100% + 12px);
+    background: var(--surface3);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-size: 11px;
+    padding: 5px 10px;
+    border-radius: 7px;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s;
+    z-index: 100;
+  }
+  .nav-item:hover .tooltip { opacity: 1; }
+
+  .sidebar-spacer { flex: 1; }
+
+  /* ── SCREENS ── */
+  .screen { display: none; width: 100%; height: 100%; }
+  .screen.active { display: flex; flex-direction: column; overflow: hidden; }
+
+  /* ── MAIN ── */
+  .main {
+    display: grid;
+    grid-template-rows: auto 1fr;
+    overflow: hidden;
+  }
+
+  /* ── TOPBAR ── */
+  .topbar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .topbar-title {
+    font-family: var(--font-head);
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text);
+    flex-shrink: 0;
+  }
+
+  .search-wrap {
+    flex: 1;
+    max-width: 460px;
+    position: relative;
+  }
+
+  .search-icon {
+    position: absolute;
+    left: 13px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--muted);
+    font-size: 14px;
+    pointer-events: none;
+  }
+
+  .search-input {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 14px 10px 38px;
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  .search-input::placeholder { color: var(--muted); }
+  .search-input:focus { border-color: var(--accent); }
+
+  .topbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-left: auto;
+  }
+
+  .btn {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 9px 16px;
+    border-radius: 10px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    transition: all 0.15s;
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    color: white;
+  }
+  .btn-primary:hover { background: #b0b0b0; }
+
+  .btn-ghost {
+    background: var(--surface2);
+    color: var(--muted2);
+    border: 1px solid var(--border);
+  }
+  .btn-ghost:hover { color: var(--text); background: var(--surface3); }
+
+  /* ── CONTENT ── */
+  .content {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    overflow: hidden;
+  }
+
+  /* ── FILTERS BAR ── */
+  .list-section {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-right: 1px solid var(--border);
+  }
+
+  .filters-bar {
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .filters-bar::-webkit-scrollbar { display: none; }
+
+  .filter-chip {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 13px;
+    border-radius: 20px;
+    font-size: 11.5px;
+    font-family: var(--font-mono);
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--muted2);
+    white-space: nowrap;
+    transition: all 0.15s;
+    flex-shrink: 0;
+  }
+
+  .filter-chip:hover { color: var(--text); border-color: rgba(255,255,255,0.15); }
+  .filter-chip.active { background: rgba(255,255,255,0.07); border-color: var(--accent); color: var(--accent); }
+  .filter-chip.positive.active { background: rgba(255,255,255,0.06); border-color: var(--green); color: var(--green); }
+  .filter-chip.negative.active { background: rgba(255,255,255,0.04); border-color: var(--red); color: var(--red); }
+  .filter-chip.dirty.active { background: rgba(255,255,255,0.05); border-color: var(--amber); color: var(--amber); }
+
+  .filter-count {
+    background: currentColor;
+    color: var(--bg);
+    border-radius: 20px;
+    padding: 1px 6px;
+    font-size: 10px;
+    font-weight: 600;
+    opacity: 0.85;
+  }
+
+  /* ── COMPANY LIST ── */
+  .company-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--surface3) transparent;
+  }
+
+  .company-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 12px;
+    align-items: center;
+  }
+
+  .company-card:hover { background: var(--surface2); border-color: rgba(255,255,255,0.12); transform: translateX(2px); }
+  .company-card.selected { background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.25); }
+
+  .company-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-head);
+    font-weight: 700;
+    font-size: 15px;
+    color: white;
+    flex-shrink: 0;
+  }
+
+  .company-info { min-width: 0; }
+
+  .company-name {
+    font-family: var(--font-head);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 4px;
+  }
+
+  .company-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  .company-meta span { display: flex; align-items: center; gap: 3px; }
+
+  .company-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 9px;
+    border-radius: 20px;
+    font-size: 10.5px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+
+  .badge-green  { background: rgba(255,255,255,0.06); color: var(--green); }
+  .badge-red    { background: rgba(255,255,255,0.04); color: var(--red); }
+  .badge-amber  { background: rgba(255,255,255,0.05);  color: var(--amber); }
+  .badge-blue   { background: rgba(255,255,255,0.07);  color: var(--accent2); }
+  .badge-muted  { background: var(--surface3); color: var(--muted2); }
+
+  .sector-tag {
+    font-size: 10px;
+    color: var(--muted);
+    font-family: var(--font-mono);
+  }
+
+  /* ── DETAIL PANEL ── */
+  .detail-panel {
+    background: var(--surface);
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--surface3) transparent;
+  }
+
+  .detail-empty {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    color: var(--muted);
+  }
+
+  .detail-empty-icon { font-size: 40px; opacity: 0.3; }
+  .detail-empty-text { font-size: 12px; }
+
+  .detail-header {
+    padding: 20px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .detail-avatar {
+    width: 52px;
+    height: 52px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-head);
+    font-weight: 700;
+    font-size: 20px;
+    color: white;
+    margin-bottom: 12px;
+  }
+
+  .detail-name {
+    font-family: var(--font-head);
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 6px;
+  }
+
+  .detail-badges {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+  }
+
+  .detail-body { padding: 16px 20px; }
+
+  .detail-section {
+    margin-bottom: 20px;
+  }
+
+  .detail-section-title {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    margin-bottom: 10px;
+    font-weight: 500;
+  }
+
+  .contact-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 12px;
+    background: var(--surface2);
+    border-radius: 9px;
+    margin-bottom: 6px;
+    font-size: 12px;
+    color: var(--text);
+  }
+
+  .contact-icon { color: var(--muted); font-size: 13px; width: 16px; text-align: center; }
+  .contact-primary { margin-left: auto; }
+
+  .history-row {
+    display: flex;
+    gap: 10px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 11.5px;
+  }
+
+  .history-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-top: 4px;
+    flex-shrink: 0;
+  }
+
+  .history-content { flex: 1; min-width: 0; }
+  .history-campaign { color: var(--muted2); margin-bottom: 2px; }
+  .history-note { color: var(--muted); font-size: 11px; }
+  .history-date { color: var(--muted); font-size: 10px; margin-left: auto; flex-shrink: 0; }
+
+  /* ── STATS ROW ── */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .stat-card {
+    background: var(--surface2);
+    border-radius: 10px;
+    padding: 10px 12px;
+    text-align: center;
+  }
+
+  .stat-value {
+    font-family: var(--font-head);
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  .stat-label {
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  /* ── DASHBOARD ── */
+  .dash-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--surface3) transparent;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .dash-kpi-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+  }
+
+  .kpi-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.15s;
+  }
+  .kpi-card:hover { border-color: rgba(255,255,255,0.14); }
+
+  .kpi-glow {
+    position: absolute;
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    top: -20px;
+    right: -20px;
+    opacity: 0.12;
+    filter: blur(24px);
+  }
+
+  .kpi-icon { font-size: 20px; margin-bottom: 10px; }
+  .kpi-value {
+    font-family: var(--font-head);
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--text);
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+  .kpi-label { font-size: 11px; color: var(--muted); }
+  .kpi-delta {
+    font-size: 10.5px;
+    margin-top: 6px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .dash-mid-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+
+  .dash-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+  }
+
+  .dash-card-title {
+    font-family: var(--font-head);
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .dash-card-sub { font-size: 10px; color: var(--muted); font-family: var(--font-mono); }
+
+  /* donut */
+  .donut-wrap {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .donut-legend {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    flex: 1;
+  }
+
+  .legend-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+  }
+
+  .legend-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .legend-label { color: var(--muted2); flex: 1; }
+  .legend-val { color: var(--text); font-weight: 500; }
+  .legend-pct { color: var(--muted); font-size: 10.5px; }
+
+  /* bar chart */
+  .bar-chart { display: flex; flex-direction: column; gap: 10px; }
+
+  .bar-row {
+    display: grid;
+    grid-template-columns: 90px 1fr 36px;
+    align-items: center;
+    gap: 10px;
+    font-size: 11.5px;
+  }
+
+  .bar-label { color: var(--muted2); text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  .bar-track {
+    height: 8px;
+    background: var(--surface2);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.6s cubic-bezier(0.16,1,0.3,1);
+  }
+
+  .bar-num { color: var(--muted2); font-size: 11px; text-align: right; }
+
+  /* activity feed */
+  .dash-bottom-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+
+  .activity-list { display: flex; flex-direction: column; gap: 0; }
+
+  .activity-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 11px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .activity-item:last-child { border-bottom: none; }
+
+  .activity-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-top: 5px;
+    flex-shrink: 0;
+  }
+
+  .activity-text { flex: 1; font-size: 12px; line-height: 1.5; }
+  .activity-company { color: var(--text); font-weight: 500; }
+  .activity-action { color: var(--muted2); }
+  .activity-time { color: var(--muted); font-size: 10.5px; margin-top: 2px; }
+
+  /* source table */
+  .source-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .source-table th {
+    color: var(--muted);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    text-align: left;
+    padding: 0 0 10px 0;
+    font-weight: 500;
+    border-bottom: 1px solid var(--border);
+  }
+  .source-table td {
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    color: var(--muted2);
+    vertical-align: middle;
+  }
+  .source-table tr:last-child td { border-bottom: none; }
+  .source-table td:first-child { color: var(--text); }
+  .source-table td:last-child { text-align: right; }
+
+  .quality-bar-wrap { display: flex; align-items: center; gap: 6px; }
+  .quality-bar-track { flex: 1; height: 5px; background: var(--surface2); border-radius: 3px; overflow: hidden; }
+  .quality-bar-fill  { height: 100%; border-radius: 3px; background: var(--accent); }
+
+  /* ── CAMPAIGNS ── */
+  .camp-body {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 340px 1fr;
+    overflow: hidden;
+  }
+
+  .camp-list-col {
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .camp-list-scroll {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--surface3) transparent;
+  }
+
+  .camp-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .camp-card:hover { background: var(--surface2); border-color: rgba(255,255,255,0.12); }
+  .camp-card.selected { background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.25); }
+
+  .camp-card-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  .camp-card-name {
+    font-family: var(--font-head);
+    font-size: 13.5px;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1.3;
+  }
+
+  .camp-card-meta {
+    display: flex;
+    gap: 10px;
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+
+  .camp-progress-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .camp-progress-track {
+    flex: 1;
+    height: 4px;
+    background: var(--surface3);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .camp-progress-fill {
+    height: 100%;
+    border-radius: 2px;
+    background: linear-gradient(90deg, #d4d4d4, #888888);
+    transition: width 0.5s cubic-bezier(0.16,1,0.3,1);
+  }
+
+  .camp-progress-pct { font-size: 10px; color: var(--muted2); }
+
+  /* detail */
+  .camp-detail-col {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .camp-detail-empty {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 12px;
+    color: var(--muted);
+  }
+
+  .camp-detail-scroll {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--surface3) transparent;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .camp-detail-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .camp-detail-title {
+    font-family: var(--font-head);
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--text);
+    margin-bottom: 6px;
+  }
+
+  .camp-detail-subject {
+    font-size: 12px;
+    color: var(--muted2);
+    margin-bottom: 10px;
+  }
+
+  .camp-kpi-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+  }
+
+  .camp-kpi {
+    background: var(--surface2);
+    border-radius: 10px;
+    padding: 14px;
+    text-align: center;
+  }
+
+  .camp-kpi-val {
+    font-family: var(--font-head);
+    font-size: 22px;
+    font-weight: 800;
+    margin-bottom: 4px;
+  }
+
+  .camp-kpi-lbl { font-size: 10px; color: var(--muted); }
+
+  .camp-section-title {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    margin-bottom: 10px;
+    font-weight: 500;
+  }
+
+  .send-row {
+    display: grid;
+    grid-template-columns: 1fr auto auto auto;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: 6px;
+    font-size: 12px;
+    transition: background 0.12s;
+  }
+  .send-row:hover { background: var(--surface2); }
+
+  .send-company { color: var(--text); font-weight: 500; }
+  .send-email   { color: var(--muted); font-size: 11px; }
+  .send-date    { color: var(--muted); font-size: 11px; white-space: nowrap; }
+
+  /* modal */
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.65);
+    backdrop-filter: blur(6px);
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+  }
+  .modal-overlay.open { opacity: 1; pointer-events: all; }
+
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 28px;
+    width: 500px;
+    max-width: 92vw;
+    max-height: 85vh;
+    overflow-y: auto;
+    transform: translateY(16px);
+    transition: transform 0.2s;
+  }
+  .modal-overlay.open .modal { transform: translateY(0); }
+
+  .modal-title {
+    font-family: var(--font-head);
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .modal-close {
+    width: 28px; height: 28px;
+    border-radius: 7px;
+    background: var(--surface2);
+    border: none;
+    color: var(--muted2);
+    cursor: pointer;
+    font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .modal-close:hover { color: var(--text); }
+
+  .form-group { margin-bottom: 16px; }
+
+  .form-label {
+    display: block;
+    font-size: 11px;
+    color: var(--muted2);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .form-input, .form-textarea, .form-select {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    padding: 10px 13px;
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .form-input:focus, .form-textarea:focus, .form-select:focus { border-color: var(--accent); }
+  .form-textarea { resize: vertical; min-height: 90px; }
+  .form-select option { background: var(--surface2); }
+
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  .modal-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 20px;
+  }
+
+  /* ── FILES ── */
+  .files-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .files-toolbar {
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .files-toolbar::-webkit-scrollbar { display: none; }
+
+  .files-grid {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 14px;
+    align-content: start;
+    scrollbar-width: thin;
+    scrollbar-color: var(--surface3) transparent;
+  }
+
+  .file-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    flex-direction: column;
+  }
+  .file-card:hover { background: var(--surface2); border-color: rgba(255,255,255,0.14); transform: translateY(-2px); }
+
+  .file-thumb {
+    height: 110px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    font-size: 36px;
+    position: relative;
+  }
+
+  .file-type-badge {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    font-size: 9px;
+    font-weight: 700;
+    padding: 3px 7px;
+    border-radius: 5px;
+    background: var(--surface3);
+    color: var(--muted2);
+    font-family: var(--font-mono);
+    letter-spacing: 0.05em;
+  }
+
+  .file-info {
+    padding: 10px 12px;
+    flex: 1;
+  }
+
+  .file-name {
+    font-family: var(--font-head);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 4px;
+  }
+
+  .file-meta {
+    font-size: 10.5px;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .file-tags {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+    margin-top: 6px;
+  }
+
+  .file-tag {
+    font-size: 9.5px;
+    padding: 2px 7px;
+    border-radius: 20px;
+    background: var(--surface3);
+    color: var(--muted2);
+  }
+
+  .drop-zone {
+    border: 2px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 28px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.15s;
+    grid-column: 1 / -1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    color: var(--muted);
+  }
+  .drop-zone:hover { border-color: var(--accent2); color: var(--muted2); background: rgba(255,255,255,0.02); }
+  .drop-zone.dragover { border-color: var(--accent); background: rgba(255,255,255,0.04); }
+
+  .drop-icon { font-size: 28px; opacity: 0.5; }
+  .drop-text { font-size: 12px; }
+  .drop-sub  { font-size: 10.5px; color: var(--muted); }
+
+  /* ── SCROLLBAR ── */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--surface3); border-radius: 4px; }
+
+  /* ── DIVIDER ── */
+  .divider { height: 1px; background: var(--border); margin: 4px 0; }
+
+  /* ── ANIMATIONS ── */
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .company-card { animation: fadeIn 0.2s ease both; }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateX(12px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+
+  .detail-header, .stats-row, .detail-body { animation: slideIn 0.2s ease both; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">C</div>
+
+    <div class="nav-item active" onclick="setNav(this,'companies')">
+      🏢
+      <div class="tooltip">Şirketler</div>
+    </div>
+    <div class="nav-item" onclick="setNav(this,'campaigns')">
+      📣
+      <div class="tooltip">Kampanyalar</div>
+    </div>
+    <div class="nav-item" onclick="setNav(this,'dashboard')">
+      📊
+      <div class="tooltip">Dashboard</div>
+    </div>
+    <div class="nav-item" onclick="setNav(this,'files')">
+      🗂️
+      <div class="tooltip">Dosyalar</div>
+    </div>
+    <div class="nav-item" onclick="setNav(this,'duplicates')">
+      ⚠️
+      <div class="tooltip">Duplicate'ler</div>
+    </div>
+
+    <div class="sidebar-spacer"></div>
+
+    <div class="nav-item" onclick="setNav(this,'settings')">
+      ⚙️
+      <div class="tooltip">Ayarlar</div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main">
+
+    <!-- SCREEN: ŞİRKETLER -->
+    <div class="screen active" id="screen-companies">
+
+    <!-- TOPBAR -->
+    <div class="topbar">
+      <div class="topbar-title">Şirketler</div>
+      <div class="search-wrap">
+        <span class="search-icon">🔍</span>
+        <input class="search-input" type="text" placeholder="Şirket adı, mail, sektör ara..." oninput="filterCompanies(this.value)" id="searchInput">
+      </div>
+      <div class="topbar-actions">
+        <button class="btn btn-ghost">↑ İçe Aktar</button>
+        <button class="btn btn-primary">+ Şirket Ekle</button>
+      </div>
+    </div>
+
+    <!-- CONTENT -->
+    <div class="content">
+
+      <!-- LIST SECTION -->
+      <div class="list-section">
+
+        <!-- FILTERS -->
+        <div class="filters-bar">
+          <div class="filter-chip active" onclick="setFilter('all', this)">
+            Tümü <span class="filter-count" id="cnt-all">12</span>
+          </div>
+          <div class="filter-chip positive" onclick="setFilter('positive', this)">
+            ✅ Olumlu <span class="filter-count" id="cnt-positive">4</span>
+          </div>
+          <div class="filter-chip negative" onclick="setFilter('negative', this)">
+            ❌ Olumsuz <span class="filter-count" id="cnt-negative">3</span>
+          </div>
+          <div class="filter-chip dirty" onclick="setFilter('dirty', this)">
+            ⚠️ Kirli Veri <span class="filter-count" id="cnt-dirty">2</span>
+          </div>
+          <div class="filter-chip" onclick="setFilter('incomplete', this)">
+            ○ Eksik <span class="filter-count" id="cnt-incomplete">3</span>
+          </div>
+          <div class="filter-chip" onclick="setFilter('none', this)">
+            — Dönüş Yok <span class="filter-count" id="cnt-none">5</span>
+          </div>
+        </div>
+
+        <!-- LIST -->
+        <div class="company-list" id="companyList"></div>
+      </div>
+
+      <!-- DETAIL PANEL -->
+      <div class="detail-panel" id="detailPanel">
+        <div class="detail-empty">
+          <div class="detail-empty-icon">🏢</div>
+          <div class="detail-empty-text">Detay için şirket seç</div>
+        </div>
+      </div>
+
+    </div>
+    </div><!-- /screen-companies -->
+
+    <!-- SCREEN: DASHBOARD -->
+    <div class="screen" id="screen-dashboard">
+      <div class="topbar">
+        <div class="topbar-title">Dashboard</div>
+        <div style="margin-left:auto;display:flex;gap:10px">
+          <button class="btn btn-ghost">↓ Rapor İndir</button>
+        </div>
+      </div>
+
+      <div class="dash-body">
+
+        <!-- KPI ROW -->
+        <div class="dash-kpi-row">
+          <div class="kpi-card">
+            <div class="kpi-glow" style="background:#d4d4d4"></div>
+            <div class="kpi-icon">🏢</div>
+            <div class="kpi-value" id="kpi-total">0</div>
+            <div class="kpi-label">Toplam Şirket</div>
+            <div class="kpi-delta" style="color:var(--accent2)">↑ 12 bu ay</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-glow" style="background:#c8c8c8"></div>
+            <div class="kpi-icon">✅</div>
+            <div class="kpi-value" id="kpi-positive">0</div>
+            <div class="kpi-label">Olumlu Dönüş</div>
+            <div class="kpi-delta" style="color:var(--green)" id="kpi-positive-rate">—</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-glow" style="background:#606060"></div>
+            <div class="kpi-icon">❌</div>
+            <div class="kpi-value" id="kpi-negative">0</div>
+            <div class="kpi-label">Olumsuz Dönüş</div>
+            <div class="kpi-delta" style="color:var(--red)" id="kpi-negative-rate">—</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-glow" style="background:#909090"></div>
+            <div class="kpi-icon">⚠️</div>
+            <div class="kpi-value" id="kpi-dirty">0</div>
+            <div class="kpi-label">Kirli / Eksik Veri</div>
+            <div class="kpi-delta" style="color:var(--amber)">Temizlenmeli</div>
+          </div>
+        </div>
+
+        <!-- MID ROW -->
+        <div class="dash-mid-row">
+
+          <!-- DONUT: Dönüş Dağılımı -->
+          <div class="dash-card">
+            <div class="dash-card-title">
+              Dönüş Dağılımı
+              <span class="dash-card-sub">Tüm zamanlar</span>
+            </div>
+            <div class="donut-wrap">
+              <canvas id="donutCanvas" width="130" height="130"></canvas>
+              <div class="donut-legend" id="donutLegend"></div>
+            </div>
+          </div>
+
+          <!-- BAR: Sektör Dağılımı -->
+          <div class="dash-card">
+            <div class="dash-card-title">
+              Sektör Dağılımı
+              <span class="dash-card-sub">Şirket sayısına göre</span>
+            </div>
+            <div class="bar-chart" id="sectorChart"></div>
+          </div>
+
+        </div>
+
+        <!-- BOTTOM ROW -->
+        <div class="dash-bottom-row">
+
+          <!-- Activity -->
+          <div class="dash-card">
+            <div class="dash-card-title">Son Aktiviteler</div>
+            <div class="activity-list" id="activityList"></div>
+          </div>
+
+          <!-- Sources table -->
+          <div class="dash-card">
+            <div class="dash-card-title">
+              Kaynak Performansı
+              <span class="dash-card-sub">Veri kalitesine göre</span>
+            </div>
+            <table class="source-table" id="sourceTable">
+              <thead>
+                <tr>
+                  <th>Kaynak</th>
+                  <th>Şirket</th>
+                  <th>Kalite</th>
+                  <th>Temiz %</th>
+                </tr>
+              </thead>
+              <tbody id="sourceTableBody"></tbody>
+            </table>
+          </div>
+
+        </div>
+      </div>
+    </div><!-- /screen-dashboard -->
+
+    <!-- SCREEN: KAMPANYALAR -->
+    <div class="screen" id="screen-campaigns">
+
+      <div class="topbar">
+        <div class="topbar-title">Kampanyalar</div>
+        <div style="margin-left:auto;display:flex;gap:10px">
+          <button class="btn btn-primary" onclick="openNewCampaignModal()">+ Yeni Kampanya</button>
+        </div>
+      </div>
+
+      <div class="camp-body">
+
+        <!-- SOL: Kampanya Listesi -->
+        <div class="camp-list-col">
+          <div style="padding:12px 14px 8px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px">
+            <div style="flex:1;position:relative">
+              <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:12px">🔍</span>
+              <input class="search-input" style="padding-left:30px;font-size:12px" placeholder="Kampanya ara..." oninput="filterCampaigns(this.value)">
+            </div>
+          </div>
+          <div style="padding:10px 14px 6px;display:flex;gap:6px;border-bottom:1px solid var(--border)">
+            <div class="filter-chip active" onclick="setCampFilter('all',this)" style="font-size:11px;padding:4px 11px">Tümü</div>
+            <div class="filter-chip" onclick="setCampFilter('sent',this)" style="font-size:11px;padding:4px 11px">Gönderildi</div>
+            <div class="filter-chip" onclick="setCampFilter('draft',this)" style="font-size:11px;padding:4px 11px">Taslak</div>
+            <div class="filter-chip" onclick="setCampFilter('scheduled',this)" style="font-size:11px;padding:4px 11px">Planlandı</div>
+          </div>
+          <div class="camp-list-scroll" id="campList"></div>
+        </div>
+
+        <!-- SAĞ: Kampanya Detayı -->
+        <div class="camp-detail-col" id="campDetailCol">
+          <div class="camp-detail-empty">
+            <div style="font-size:40px;opacity:.3">📣</div>
+            <div style="font-size:12px">Detay için kampanya seç</div>
+          </div>
+        </div>
+
+      </div>
+    </div><!-- /screen-campaigns -->
+
+    <!-- MODAL: Yeni Kampanya -->
+    <div class="modal-overlay" id="newCampModal" onclick="closeModalOutside(event)">
+      <div class="modal">
+        <div class="modal-title">
+          Yeni Kampanya
+          <button class="modal-close" onclick="closeNewCampaignModal()">✕</button>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Kampanya Adı</label>
+          <input class="form-input" id="newCampName" placeholder="Q2 Tanıtım Kampanyası">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Mail Konusu</label>
+          <input class="form-input" id="newCampSubject" placeholder="Şirketiniz için özel bir teklif...">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Mail İçeriği</label>
+          <textarea class="form-textarea" id="newCampBody" placeholder="Sayın yetkili,&#10;&#10;..."></textarea>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Durum</label>
+            <select class="form-select" id="newCampStatus">
+              <option value="draft">Taslak</option>
+              <option value="scheduled">Planlandı</option>
+              <option value="sent">Gönderildi</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Hedef Segment</label>
+            <select class="form-select" id="newCampSegment">
+              <option value="all">Tüm Şirketler</option>
+              <option value="positive">Olumlu Dönüşler</option>
+              <option value="none">Dönüş Vermeyenler</option>
+              <option value="clean">Temiz Veri</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-ghost" onclick="closeNewCampaignModal()">İptal</button>
+          <button class="btn btn-primary" onclick="createCampaign()">Kampanya Oluştur</button>
+        </div>
+      </div>
+    </div>
+    <!-- SCREEN: DOSYALAR -->
+    <div class="screen" id="screen-files">
+      <div class="topbar">
+        <div class="topbar-title">Dosyalar</div>
+        <div style="margin-left:auto;display:flex;gap:10px;align-items:center">
+          <div style="position:relative">
+            <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:12px">🔍</span>
+            <input class="search-input" style="padding-left:30px;font-size:12px;width:220px" placeholder="Dosya ara..." oninput="filterFiles(this.value)" id="fileSearchInput">
+          </div>
+          <button class="btn btn-primary" onclick="document.getElementById('fileUploadInput').click()">↑ Dosya Yükle</button>
+          <input type="file" id="fileUploadInput" style="display:none" multiple accept=".pptx,.psd,.pdf,.key,.ai,.sketch" onchange="handleFileUpload(this)">
+        </div>
+      </div>
+
+      <div class="files-body">
+        <div class="files-toolbar">
+          <div class="filter-chip active" onclick="setFileFilter('all',this)" style="font-size:11px;padding:4px 11px">Tümü <span class="filter-count" id="fcnt-all">0</span></div>
+          <div class="filter-chip" onclick="setFileFilter('pptx',this)" style="font-size:11px;padding:4px 11px">PPTX</div>
+          <div class="filter-chip" onclick="setFileFilter('psd',this)" style="font-size:11px;padding:4px 11px">PSD</div>
+          <div class="filter-chip" onclick="setFileFilter('pdf',this)" style="font-size:11px;padding:4px 11px">PDF</div>
+          <div class="filter-chip" onclick="setFileFilter('other',this)" style="font-size:11px;padding:4px 11px">Diğer</div>
+          <div style="width:1px;height:20px;background:var(--border);flex-shrink:0"></div>
+          <div class="filter-chip" onclick="setFileYear('all',this)" id="fyear-all" style="font-size:11px;padding:4px 11px">Tüm Yıllar</div>
+          <div class="filter-chip" onclick="setFileYear('2025',this)" style="font-size:11px;padding:4px 11px">2025</div>
+          <div class="filter-chip" onclick="setFileYear('2024',this)" style="font-size:11px;padding:4px 11px">2024</div>
+          <div class="filter-chip" onclick="setFileYear('2023',this)" style="font-size:11px;padding:4px 11px">2023</div>
+          <div class="filter-chip" onclick="setFileYear('2022',this)" style="font-size:11px;padding:4px 11px">2022</div>
+        </div>
+
+        <div class="files-grid" id="filesGrid"
+          ondragover="event.preventDefault();document.getElementById('dropZone').classList.add('dragover')"
+          ondragleave="document.getElementById('dropZone').classList.remove('dragover')"
+          ondrop="handleFileDrop(event)">
+          <!-- cards rendered by JS -->
+        </div>
+      </div>
+    </div>
+
+    <!-- FILE DETAIL MODAL -->
+    <div class="modal-overlay" id="fileDetailModal" onclick="closeFileModal(event)">
+      <div class="modal" style="width:400px">
+        <div class="modal-title">
+          <span id="fileModalTitle">Dosya Detayı</span>
+          <button class="modal-close" onclick="document.getElementById('fileDetailModal').classList.remove('open')">✕</button>
+        </div>
+        <div id="fileModalBody"></div>
+        <div class="modal-actions">
+          <button class="btn btn-ghost" onclick="deleteSelectedFile()">🗑 Sil</button>
+          <button class="btn btn-ghost" onclick="document.getElementById('fileDetailModal').classList.remove('open')">Kapat</button>
+        </div>
+      </div>
+    </div>
+    <div class="screen" id="screen-duplicates">
+      <div class="topbar"><div class="topbar-title">Duplicate'ler</div></div>
+      <div style="flex:1;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;color:var(--muted)">
+        <div style="font-size:40px;opacity:.3">⚠️</div>
+        <div style="font-size:13px">Yakında eklenecek</div>
+      </div>
+    </div>
+    <div class="screen" id="screen-settings">
+      <div class="topbar"><div class="topbar-title">Ayarlar</div></div>
+      <div style="flex:1;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;color:var(--muted)">
+        <div style="font-size:40px;opacity:.3">⚙️</div>
+        <div style="font-size:13px">Yakında eklenecek</div>
+      </div>
+    </div>
+
+  </div><!-- /main -->
+</div>
+
+<script>
+// ── SAMPLE DATA ──
+const companies = [
+  {
+    id: 1,
+    name: 'Meridian Teknoloji',
+    domain: 'meridiantech.com.tr',
+    sector: 'Yazılım & SaaS',
+    city: 'İstanbul',
+    quality: 'clean',
+    response: 'positive',
+    contacts: [
+      { type: 'email', value: 'info@meridiantech.com.tr', primary: true },
+      { type: 'email', value: 'ceo@meridiantech.com.tr', primary: false },
+      { type: 'phone', value: '+90 212 555 01 01', primary: true },
+    ],
+    sources: ['LinkedIn', 'Kaynak Panel A'],
+    history: [
+      { campaign: 'Q1 Tanıtım Kampanyası', response: 'positive', note: 'Demo talebi ilettiler', date: '12 Mar 2025' },
+      { campaign: 'Yılbaşı Maili', response: 'none', note: '', date: '02 Oca 2025' },
+    ]
+  },
+  {
+    id: 2,
+    name: 'Atlas Lojistik A.Ş.',
+    domain: 'atlaslojistik.com',
+    sector: 'Lojistik',
+    city: 'İzmir',
+    quality: 'clean',
+    response: 'negative',
+    contacts: [
+      { type: 'email', value: 'iletisim@atlaslojistik.com', primary: true },
+      { type: 'phone', value: '+90 232 444 22 33', primary: true },
+    ],
+    sources: ['Kaynak Panel B'],
+    history: [
+      { campaign: 'Q1 Tanıtım Kampanyası', response: 'negative', note: 'Bütçe uygun değil dediler', date: '10 Mar 2025' },
+    ]
+  },
+  {
+    id: 3,
+    name: 'Bora Medya Grup',
+    domain: 'boramedya.com',
+    sector: 'Medya & Reklam',
+    city: 'Ankara',
+    quality: 'dirty',
+    response: 'none',
+    contacts: [
+      { type: 'email', value: 'info@@boramedya.com', primary: true },
+      { type: 'phone', value: '+90 312 ???', primary: true },
+    ],
+    sources: ['Kaynak Panel C'],
+    history: []
+  },
+  {
+    id: 4,
+    name: 'Vega Finans',
+    domain: 'vegafinans.com.tr',
+    sector: 'Finans & Sigorta',
+    city: 'İstanbul',
+    quality: 'clean',
+    response: 'positive',
+    contacts: [
+      { type: 'email', value: 'kurumsal@vegafinans.com.tr', primary: true },
+      { type: 'email', value: 'gm@vegafinans.com.tr', primary: false },
+      { type: 'phone', value: '+90 212 333 44 55', primary: true },
+      { type: 'phone', value: '+90 533 100 20 30', primary: false },
+    ],
+    sources: ['LinkedIn', 'Kaynak Panel A', 'Kaynak Panel D'],
+    history: [
+      { campaign: 'Q1 Tanıtım Kampanyası', response: 'positive', note: 'Toplantı ayarlandı', date: '14 Mar 2025' },
+      { campaign: 'Pilot Teklif Maili', response: 'positive', note: 'Teklif onaylandı', date: '28 Mar 2025' },
+    ]
+  },
+  {
+    id: 5,
+    name: 'Helix Danışmanlık',
+    domain: '',
+    sector: 'Danışmanlık',
+    city: 'İstanbul',
+    quality: 'incomplete',
+    response: 'none',
+    contacts: [
+      { type: 'email', value: 'helix.danisman@gmail.com', primary: true },
+    ],
+    sources: ['Manuel Giriş'],
+    history: []
+  },
+  {
+    id: 6,
+    name: 'Polaris Enerji',
+    domain: 'polarisenerji.com',
+    sector: 'Enerji',
+    city: 'Bursa',
+    quality: 'clean',
+    response: 'negative',
+    contacts: [
+      { type: 'email', value: 'info@polarisenerji.com', primary: true },
+      { type: 'phone', value: '+90 224 600 10 20', primary: true },
+    ],
+    sources: ['Kaynak Panel B', 'Kaynak Panel C'],
+    history: [
+      { campaign: 'Q1 Tanıtım Kampanyası', response: 'negative', note: 'Şu an farklı tedarikçiyle çalışıyorlar', date: '11 Mar 2025' },
+    ]
+  },
+  {
+    id: 7,
+    name: 'Nexus E-Ticaret',
+    domain: 'nexuseticaret.com',
+    sector: 'E-Ticaret',
+    city: 'İstanbul',
+    quality: 'clean',
+    response: 'positive',
+    contacts: [
+      { type: 'email', value: 'destek@nexuseticaret.com', primary: true },
+      { type: 'email', value: 'cmo@nexuseticaret.com', primary: false },
+      { type: 'phone', value: '+90 212 777 88 99', primary: true },
+    ],
+    sources: ['LinkedIn'],
+    history: [
+      { campaign: 'Pilot Teklif Maili', response: 'positive', note: 'İlgilendiklerini belirttiler', date: '01 Nis 2025' },
+    ]
+  },
+  {
+    id: 8,
+    name: 'Sigma İnşaat',
+    domain: 'sigmainşaat.com',
+    sector: 'İnşaat & Gayrimenkul',
+    city: 'Gaziantep',
+    quality: 'dirty',
+    response: 'none',
+    contacts: [
+      { type: 'email', value: 'sigma@', primary: true },
+      { type: 'phone', value: '0000000', primary: true },
+    ],
+    sources: ['Kaynak Panel D'],
+    history: []
+  },
+  {
+    id: 9,
+    name: 'Aurora Sağlık',
+    domain: 'aurorasaglik.com.tr',
+    sector: 'Sağlık',
+    city: 'Ankara',
+    quality: 'incomplete',
+    response: 'none',
+    contacts: [
+      { type: 'email', value: 'info@aurorasaglik.com.tr', primary: true },
+    ],
+    sources: ['Kaynak Panel A'],
+    history: []
+  },
+  {
+    id: 10,
+    name: 'Kronos Yazılım',
+    domain: 'kronosyazilim.com',
+    sector: 'Yazılım & SaaS',
+    city: 'İzmir',
+    quality: 'clean',
+    response: 'negative',
+    contacts: [
+      { type: 'email', value: 'sales@kronosyazilim.com', primary: true },
+      { type: 'phone', value: '+90 232 500 60 70', primary: true },
+    ],
+    sources: ['LinkedIn', 'Kaynak Panel B'],
+    history: [
+      { campaign: 'Q1 Tanıtım Kampanyası', response: 'negative', note: 'Henüz hazır değiller', date: '09 Mar 2025' },
+    ]
+  },
+  {
+    id: 11,
+    name: 'Lyra Tekstil',
+    domain: 'lyratekstil.com',
+    sector: 'Tekstil & Moda',
+    city: 'Bursa',
+    quality: 'clean',
+    response: 'positive',
+    contacts: [
+      { type: 'email', value: 'ihracat@lyratekstil.com', primary: true },
+      { type: 'phone', value: '+90 224 300 10 20', primary: true },
+    ],
+    sources: ['Kaynak Panel C'],
+    history: [
+      { campaign: 'Pilot Teklif Maili', response: 'positive', note: 'Süreç devam ediyor', date: '03 Nis 2025' },
+    ]
+  },
+  {
+    id: 12,
+    name: 'Orion Gıda',
+    domain: '',
+    sector: 'Gıda & İçecek',
+    city: 'Konya',
+    quality: 'incomplete',
+    response: 'none',
+    contacts: [
+      { type: 'phone', value: '+90 332 400 55 66', primary: true },
+    ],
+    sources: ['Manuel Giriş'],
+    history: []
+  },
+];
+
+
+// ── FILES DATA ──
+const fileTypeEmoji = { pptx:'📊', psd:'🎨', pdf:'📄', key:'📊', ai:'✏️', sketch:'💎', other:'📁' };
+
+let filesData = [
+  { id:1, name:'Q4 2024 Kurumsal Sunum',   type:'pptx', year:2024, size:'4.2 MB', tags:['sunum','kurumsal'], uploadedAt:'15 Kas 2024' },
+  { id:2, name:'Marka Kimlik Dosyası',      type:'psd',  year:2024, size:'38 MB',  tags:['tasarım','marka'],  uploadedAt:'03 Eki 2024' },
+  { id:3, name:'2024 Yıllık Faaliyet',      type:'pdf',  year:2024, size:'2.1 MB', tags:['rapor','yıllık'],   uploadedAt:'10 Oca 2025' },
+  { id:4, name:'Satış Pitch Deck 2023',     type:'pptx', year:2023, size:'6.8 MB', tags:['sunum','satış'],    uploadedAt:'22 Mar 2023' },
+  { id:5, name:'Web Tasarım Mockup',        type:'psd',  year:2023, size:'54 MB',  tags:['tasarım','web'],    uploadedAt:'07 Haz 2023' },
+  { id:6, name:'Q2 2023 Kampanya Brief',    type:'pdf',  year:2023, size:'1.3 MB', tags:['brief','kampanya'], uploadedAt:'01 Nis 2023' },
+  { id:7, name:'Logo Varyantları 2022',     type:'psd',  year:2022, size:'22 MB',  tags:['tasarım','logo'],   uploadedAt:'14 Şub 2022' },
+  { id:8, name:'Tanıtım Sunumu 2022',       type:'pptx', year:2022, size:'5.5 MB', tags:['sunum'],            uploadedAt:'20 Oca 2022' },
+  { id:9, name:'2025 Strateji Sunumu',      type:'pptx', year:2025, size:'3.9 MB', tags:['strateji','sunum'], uploadedAt:'05 Oca 2025' },
+  { id:10, name:'Ürün Kataloğu 2025',       type:'pdf',  year:2025, size:'8.4 MB', tags:['katalog','ürün'],   uploadedAt:'12 Şub 2025' },
+];
+
+let activeFileType  = 'all';
+let activeFileYear  = 'all';
+let fileSearchQuery = '';
+let selectedFileId  = null;
+let nextFileId      = 11;
+
+function setFileFilter(type, el) {
+  activeFileType = type;
+  document.querySelectorAll('#screen-files .files-toolbar .filter-chip').forEach(c => {
+    if (['all','pptx','psd','pdf','other'].some(t => c.getAttribute('onclick') && c.getAttribute('onclick').includes("'"+t+"'"))) {
+      c.classList.remove('active');
+    }
+  });
+  el.classList.add('active');
+  renderFiles();
+}
+
+function setFileYear(year, el) {
+  activeFileYear = year;
+  document.querySelectorAll('#screen-files .files-toolbar .filter-chip').forEach(c => {
+    const oc = c.getAttribute('onclick') || '';
+    if (oc.indexOf('setFileYear') !== -1) c.classList.remove('active');
+  });
+  el.classList.add('active');
+  renderFiles();
+}
+
+function filterFiles(val) {
+  fileSearchQuery = val.toLowerCase();
+  renderFiles();
+}
+
+function getFilteredFiles() {
+  return filesData.filter(f => {
+    const matchType = activeFileType === 'all' || f.type === activeFileType;
+    const matchYear = activeFileYear === 'all' || String(f.year) === activeFileYear;
+    const matchSearch = !fileSearchQuery ||
+      f.name.toLowerCase().includes(fileSearchQuery) ||
+      f.tags.some(t => t.includes(fileSearchQuery));
+    return matchType && matchYear && matchSearch;
+  });
+}
+
+function renderFiles() {
+  const grid = document.getElementById('filesGrid');
+  const list = getFilteredFiles();
+  document.getElementById('fcnt-all').textContent = filesData.length;
+
+  const cardsHTML = list.map(f => {
+    const emoji = fileTypeEmoji[f.type] || '📁';
+    const tagsHTML = f.tags.map(t => `<span class="file-tag">${t}</span>`).join('');
+    return `
+    <div class="file-card" onclick="openFileModal(${f.id})">
+      <div class="file-thumb">
+        ${emoji}
+        <span class="file-type-badge">${f.type.toUpperCase()}</span>
+      </div>
+      <div class="file-info">
+        <div class="file-name">${f.name}</div>
+        <div class="file-meta">
+          <span>${f.year}</span>
+          <span>${f.size}</span>
+        </div>
+        <div class="file-tags">${tagsHTML}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  const dropZone = `
+    <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileUploadInput').click()">
+      <div class="drop-icon">☁️</div>
+      <div class="drop-text">Dosya yüklemek için tıkla veya sürükle</div>
+      <div class="drop-sub">PPTX, PSD, PDF, AI, Sketch — maks. 200 MB</div>
+    </div>`;
+
+  grid.innerHTML = (list.length === 0
+    ? `<div style="grid-column:1/-1;text-align:center;color:var(--muted);padding:40px;font-size:12px">Sonuç bulunamadı</div>`
+    : cardsHTML) + dropZone;
+}
+
+function openFileModal(id) {
+  selectedFileId = id;
+  const f = filesData.find(x => x.id === id);
+  const emoji = fileTypeEmoji[f.type] || '📁';
+  document.getElementById('fileModalTitle').textContent = f.name;
+  document.getElementById('fileModalBody').innerHTML = `
+    <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px">
+      <div style="font-size:48px;background:var(--surface2);border-radius:12px;width:72px;height:72px;display:flex;align-items:center;justify-content:center">${emoji}</div>
+      <div>
+        <div style="font-family:var(--font-head);font-size:15px;font-weight:700;margin-bottom:4px">${f.name}</div>
+        <div style="font-size:11px;color:var(--muted)">${f.type.toUpperCase()} · ${f.size} · ${f.year}</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
+      <div style="background:var(--surface2);border-radius:9px;padding:12px">
+        <div style="font-size:10px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.06em">Yüklendi</div>
+        <div style="font-size:12px">${f.uploadedAt}</div>
+      </div>
+      <div style="background:var(--surface2);border-radius:9px;padding:12px">
+        <div style="font-size:10px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.06em">Boyut</div>
+        <div style="font-size:12px">${f.size}</div>
+      </div>
+    </div>
+    <div style="margin-bottom:12px">
+      <div style="font-size:10px;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em">Etiketler</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">${f.tags.map(t=>`<span class="file-tag" style="font-size:11px;padding:4px 10px">${t}</span>`).join('')}</div>
+    </div>`;
+  document.getElementById('fileDetailModal').classList.add('open');
+}
+
+function closeFileModal(e) {
+  if (e.target === document.getElementById('fileDetailModal'))
+    document.getElementById('fileDetailModal').classList.remove('open');
+}
+
+function deleteSelectedFile() {
+  if (!selectedFileId) return;
+  filesData = filesData.filter(f => f.id !== selectedFileId);
+  document.getElementById('fileDetailModal').classList.remove('open');
+  renderFiles();
+}
+
+function handleFileUpload(input) {
+  Array.from(input.files).forEach(file => {
+    const ext = file.name.split('.').pop().toLowerCase();
+    const type = ['pptx','psd','pdf','key','ai','sketch'].includes(ext) ? ext : 'other';
+    const size = file.size > 1048576
+      ? (file.size/1048576).toFixed(1)+' MB'
+      : (file.size/1024).toFixed(0)+' KB';
+    filesData.unshift({
+      id: nextFileId++,
+      name: file.name.replace(/\.[^.]+$/, ''),
+      type, size,
+      year: new Date().getFullYear(),
+      tags: [type],
+      uploadedAt: new Date().toLocaleDateString('tr-TR', { day:'2-digit', month:'short', year:'numeric' })
+    });
+  });
+  renderFiles();
+  input.value = '';
+}
+
+function handleFileDrop(event) {
+  event.preventDefault();
+  document.getElementById('dropZone').classList.remove('dragover');
+  const dt = event.dataTransfer;
+  if (dt && dt.files.length) {
+    const fakeInput = { files: dt.files };
+    handleFileUpload(fakeInput);
+  }
+}
+
+// ── CAMPAIGN DATA ──
+const campaigns = [
+  {
+    id: 1,
+    name: 'Q1 Tanıtım Kampanyası',
+    subject: 'Şirketiniz için özel bir çözüm hazırladık',
+    body: 'Sayın yetkili,\n\nFirmanızın büyümesine katkı sağlayacak yeni çözümlerimizi sizinle paylaşmak istiyoruz...',
+    status: 'sent', segment: 'all', sentAt: '10 Mar 2025',
+    sends: [
+      { company: 'Meridian Teknoloji',  email: 'info@meridiantech.com.tr',   response: 'positive', date: '12 Mar 2025' },
+      { company: 'Atlas Lojistik A.Ş.', email: 'iletisim@atlaslojistik.com', response: 'negative', date: '10 Mar 2025' },
+      { company: 'Vega Finans',         email: 'kurumsal@vegafinans.com.tr', response: 'positive', date: '14 Mar 2025' },
+      { company: 'Polaris Enerji',      email: 'info@polarisenerji.com',     response: 'negative', date: '11 Mar 2025' },
+      { company: 'Kronos Yazılım',      email: 'sales@kronosyazilim.com',    response: 'negative', date: '09 Mar 2025' },
+      { company: 'Nexus E-Ticaret',     email: 'destek@nexuseticaret.com',   response: 'none',     date: '10 Mar 2025' },
+      { company: 'Lyra Tekstil',        email: 'ihracat@lyratekstil.com',    response: 'none',     date: '10 Mar 2025' },
+    ]
+  },
+  {
+    id: 2,
+    name: 'Pilot Teklif Maili',
+    subject: '3 Aylık Ücretsiz Pilot Fırsatı',
+    body: 'Sayın yetkili,\n\nSizin için hazırladığımız 3 aylık ücretsiz pilot programına davet ediyoruz...',
+    status: 'sent', segment: 'positive', sentAt: '28 Mar 2025',
+    sends: [
+      { company: 'Vega Finans',     email: 'kurumsal@vegafinans.com.tr', response: 'positive', date: '28 Mar 2025' },
+      { company: 'Nexus E-Ticaret', email: 'destek@nexuseticaret.com',   response: 'positive', date: '01 Nis 2025' },
+      { company: 'Lyra Tekstil',    email: 'ihracat@lyratekstil.com',    response: 'positive', date: '03 Nis 2025' },
+      { company: 'Meridian Teknoloji', email: 'info@meridiantech.com.tr',response: 'none',     date: '28 Mar 2025' },
+    ]
+  },
+  {
+    id: 3,
+    name: 'Yılbaşı Maili',
+    subject: 'Yeni Yılınızı Kutluyoruz 🎉',
+    body: 'Sayın yetkili,\n\nYeni yılınızı en içten dileklerimizle kutluyor, başarı ve sağlık dolu bir yıl diliyoruz...',
+    status: 'sent', segment: 'all', sentAt: '02 Oca 2025',
+    sends: [
+      { company: 'Meridian Teknoloji', email: 'info@meridiantech.com.tr', response: 'none', date: '02 Oca 2025' },
+    ]
+  },
+  {
+    id: 4,
+    name: 'Q2 Ürün Güncelleme',
+    subject: 'Yeni özelliklerimizi keşfedin',
+    body: 'Sayın yetkili,\n\nPlatformumuzda heyecan verici yeni özellikler yayında...',
+    status: 'scheduled', segment: 'all', sentAt: '20 Nis 2025',
+    sends: []
+  },
+  {
+    id: 5,
+    name: 'Yeniden Aktivasyon',
+    subject: 'Sizi özledik — geri dönün',
+    body: 'Sayın yetkili,\n\nBir sürdür haber alamadık...',
+    status: 'draft', segment: 'none', sentAt: null,
+    sends: []
+  },
+];
+
+let selectedCampId   = null;
+let activeCampFilter = 'all';
+let campSearchQuery  = '';
+
+function setCampFilter(f, el) {
+  activeCampFilter = f;
+  document.querySelectorAll('#screen-campaigns .filter-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  renderCampList();
+}
+
+function filterCampaigns(val) {
+  campSearchQuery = val.toLowerCase();
+  renderCampList();
+}
+
+function getFilteredCampaigns() {
+  return campaigns.filter(c => {
+    const matchSearch = !campSearchQuery || c.name.toLowerCase().includes(campSearchQuery) || c.subject.toLowerCase().includes(campSearchQuery);
+    const matchFilter = activeCampFilter === 'all' || c.status === activeCampFilter;
+    return matchSearch && matchFilter;
+  });
+}
+
+const statusMeta = {
+  sent:      { label: 'Gönderildi', color: 'var(--green)',   bg: 'rgba(255,255,255,0.06)' },
+  scheduled: { label: 'Planlandı',  color: 'var(--amber)',   bg: 'rgba(255,255,255,0.05)' },
+  draft:     { label: 'Taslak',     color: 'var(--muted2)',  bg: 'var(--surface3)' },
+  completed: { label: 'Tamamlandı', color: 'var(--accent2)', bg: 'rgba(255,255,255,0.06)' },
+};
+
+function campStatusBadge(s) {
+  const m = statusMeta[s] || statusMeta.draft;
+  return `<span class="badge" style="background:${m.bg};color:${m.color}">${m.label}</span>`;
+}
+
+function responseBadgeSmall(r) {
+  if (r === 'positive') return `<span class="badge badge-green">✅</span>`;
+  if (r === 'negative') return `<span class="badge badge-red">❌</span>`;
+  return `<span class="badge badge-muted">—</span>`;
+}
+
+function renderCampList() {
+  const list = getFilteredCampaigns();
+  const el = document.getElementById('campList');
+  if (!list.length) {
+    el.innerHTML = `<div style="text-align:center;color:var(--muted);padding:40px 16px;font-size:12px">Sonuç bulunamadı</div>`;
+    return;
+  }
+  el.innerHTML = list.map(c => {
+    const total = c.sends.length;
+    const pos   = c.sends.filter(s => s.response === 'positive').length;
+    const rate  = total ? Math.round(pos / total * 100) : 0;
+    return `
+    <div class="camp-card ${selectedCampId === c.id ? 'selected' : ''}" onclick="selectCampaign(${c.id})">
+      <div class="camp-card-head">
+        <div class="camp-card-name">${c.name}</div>
+        ${campStatusBadge(c.status)}
+      </div>
+      <div class="camp-card-meta">
+        <span>✉️ ${total} gönderim</span>
+        ${c.sentAt ? `<span>📅 ${c.sentAt}</span>` : ''}
+        <span style="color:var(--green)">↑ %${rate}</span>
+      </div>
+      <div class="camp-progress-wrap">
+        <div class="camp-progress-track">
+          <div class="camp-progress-fill" style="width:${rate}%"></div>
+        </div>
+        <span class="camp-progress-pct">${rate}%</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function selectCampaign(id) {
+  selectedCampId = id;
+  renderCampList();
+  const c   = campaigns.find(x => x.id === id);
+  const col = document.getElementById('campDetailCol');
+  const total  = c.sends.length;
+  const pos    = c.sends.filter(s => s.response === 'positive').length;
+  const neg    = c.sends.filter(s => s.response === 'negative').length;
+  const rate   = total ? Math.round(pos / total * 100) : 0;
+  const segLabels = { all:'Tüm Şirketler', positive:'Olumlu Dönüşler', none:'Dönüş Vermeyenler', clean:'Temiz Veri' };
+
+  const sendsHTML = c.sends.length
+    ? c.sends.map(s => `
+      <div class="send-row">
+        <div>
+          <div class="send-company">${s.company}</div>
+          <div class="send-email">${s.email}</div>
+        </div>
+        ${responseBadgeSmall(s.response)}
+        <div class="send-date">${s.date}</div>
+      </div>`).join('')
+    : `<div style="color:var(--muted);font-size:12px;padding:12px 0">Henüz gönderim yok</div>`;
+
+  col.innerHTML = `
+    <div class="camp-detail-scroll">
+      <div class="camp-detail-header">
+        <div>
+          <div class="camp-detail-title">${c.name}</div>
+          <div class="camp-detail-subject">📧 ${c.subject}</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            ${campStatusBadge(c.status)}
+            <span class="badge badge-muted">🎯 ${segLabels[c.segment]||c.segment}</span>
+            ${c.sentAt ? `<span class="badge badge-muted">📅 ${c.sentAt}</span>` : ''}
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;flex-shrink:0">
+          ${c.status === 'draft' ? `<button class="btn btn-primary" style="font-size:11px;padding:8px 14px">▶ Gönder</button>` : ''}
+          <button class="btn btn-ghost" style="font-size:11px;padding:8px 14px">✎ Düzenle</button>
+        </div>
+      </div>
+
+      <div class="camp-kpi-row">
+        <div class="camp-kpi"><div class="camp-kpi-val">${total}</div><div class="camp-kpi-lbl">Gönderim</div></div>
+        <div class="camp-kpi"><div class="camp-kpi-val" style="color:var(--green)">${pos}</div><div class="camp-kpi-lbl">Olumlu</div></div>
+        <div class="camp-kpi"><div class="camp-kpi-val" style="color:var(--red)">${neg}</div><div class="camp-kpi-lbl">Olumsuz</div></div>
+        <div class="camp-kpi"><div class="camp-kpi-val" style="color:var(--accent2)">%${rate}</div><div class="camp-kpi-lbl">Dönüşüm</div></div>
+      </div>
+
+      <div>
+        <div class="camp-section-title">Mail Önizlemesi</div>
+        <div style="background:var(--surface2);border-radius:10px;padding:16px;font-size:12px;color:var(--muted2);line-height:1.7;white-space:pre-wrap">${c.body}</div>
+      </div>
+
+      <div>
+        <div class="camp-section-title">Gönderim Listesi (${total})</div>
+        ${sendsHTML}
+      </div>
+    </div>`;
+}
+
+function openNewCampaignModal()  { document.getElementById('newCampModal').classList.add('open'); }
+function closeNewCampaignModal() { document.getElementById('newCampModal').classList.remove('open'); }
+function closeModalOutside(e)    { if (e.target === document.getElementById('newCampModal')) closeNewCampaignModal(); }
+
+function createCampaign() {
+  const name    = document.getElementById('newCampName').value.trim();
+  const subject = document.getElementById('newCampSubject').value.trim();
+  const body    = document.getElementById('newCampBody').value.trim();
+  const status  = document.getElementById('newCampStatus').value;
+  const segment = document.getElementById('newCampSegment').value;
+  if (!name) { document.getElementById('newCampName').focus(); return; }
+  const now     = new Date();
+  const dateStr = now.toLocaleDateString('tr-TR', { day:'2-digit', month:'short', year:'numeric' });
+  campaigns.unshift({ id: Date.now(), name, subject, body, status, segment, sentAt: status==='sent'?dateStr:null, sends: [] });
+  closeNewCampaignModal();
+  renderCampList();
+  ['newCampName','newCampSubject','newCampBody'].forEach(id => document.getElementById(id).value = '');
+}
+
+// ── STATE ──
+let activeFilter = 'all';
+let searchQuery  = '';
+let selectedId   = null;
+
+// ── COLORS ──
+const avatarColors = [
+  '#4a4a4a','#383838','#505050','#2e2e2e','#424242',
+  '#3a3a3a','#464646','#303030','#3e3e3e','#484848'
+];
+
+function getColor(name) {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+  return avatarColors[h % avatarColors.length];
+}
+
+function getInitials(name) {
+  return name.split(' ').slice(0,2).map(w => w[0]).join('').toUpperCase();
+}
+
+// ── FILTER ──
+function setFilter(filter, el) {
+  activeFilter = filter;
+  document.querySelectorAll('#screen-companies .filter-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  renderList();
+}
+
+function setNav(el, screen) {
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  el.classList.add('active');
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + screen).classList.add('active');
+  if (screen === 'dashboard')  renderDashboard();
+  if (screen === 'campaigns')  renderCampList();
+  if (screen === 'files')      renderFiles();
+}
+
+function filterCompanies(val) {
+  searchQuery = val.toLowerCase();
+  renderList();
+}
+
+function getFiltered() {
+  return companies.filter(c => {
+    const matchSearch = !searchQuery ||
+      c.name.toLowerCase().includes(searchQuery) ||
+      c.sector.toLowerCase().includes(searchQuery) ||
+      c.city.toLowerCase().includes(searchQuery) ||
+      c.contacts.some(ct => ct.value.toLowerCase().includes(searchQuery));
+
+    const matchFilter =
+      activeFilter === 'all' ? true :
+      activeFilter === 'positive'   ? c.response === 'positive' :
+      activeFilter === 'negative'   ? c.response === 'negative' :
+      activeFilter === 'dirty'      ? c.quality  === 'dirty' :
+      activeFilter === 'incomplete' ? c.quality  === 'incomplete' :
+      activeFilter === 'none'       ? c.response === 'none' : true;
+
+    return matchSearch && matchFilter;
+  });
+}
+
+function responseBadge(r, quality) {
+  if (quality === 'dirty')      return `<span class="badge badge-amber">⚠️ Kirli</span>`;
+  if (quality === 'incomplete') return `<span class="badge badge-muted">○ Eksik</span>`;
+  if (r === 'positive') return `<span class="badge badge-green">✅ Olumlu</span>`;
+  if (r === 'negative') return `<span class="badge badge-red">❌ Olumsuz</span>`;
+  return `<span class="badge badge-muted">— Dönüş Yok</span>`;
+}
+
+// ── RENDER LIST ──
+function renderList() {
+  const list = document.getElementById('companyList');
+  const filtered = getFiltered();
+
+  if (filtered.length === 0) {
+    list.innerHTML = `<div style="text-align:center;color:var(--muted);padding:40px 20px;font-size:13px;">Sonuç bulunamadı</div>`;
+    return;
+  }
+
+  list.innerHTML = filtered.map((c, i) => {
+    const emails = c.contacts.filter(ct => ct.type === 'email').length;
+    const phones = c.contacts.filter(ct => ct.type === 'phone').length;
+    const color  = getColor(c.name);
+    const delay  = Math.min(i * 0.03, 0.3);
+
+    return `
+    <div class="company-card ${selectedId === c.id ? 'selected' : ''}"
+         onclick="selectCompany(${c.id})"
+         style="animation-delay:${delay}s">
+      <div class="company-avatar" style="background:${color}">${getInitials(c.name)}</div>
+      <div class="company-info">
+        <div class="company-name">${highlight(c.name)}</div>
+        <div class="company-meta">
+          <span>📍 ${c.city}</span>
+          <span>✉️ ${emails}</span>
+          <span>📞 ${phones}</span>
+        </div>
+      </div>
+      <div class="company-right">
+        ${responseBadge(c.response, c.quality)}
+        <div class="sector-tag">${c.sector}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  updateCounts();
+}
+
+function highlight(text) {
+  if (!searchQuery) return text;
+  const re = new RegExp(`(${searchQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+  return text.replace(re, '<mark style="background:rgba(91,110,245,0.3);color:var(--accent2);border-radius:3px;padding:0 2px">$1</mark>');
+}
+
+function updateCounts() {
+  document.getElementById('cnt-all').textContent      = companies.length;
+  document.getElementById('cnt-positive').textContent  = companies.filter(c => c.response === 'positive').length;
+  document.getElementById('cnt-negative').textContent  = companies.filter(c => c.response === 'negative').length;
+  document.getElementById('cnt-dirty').textContent     = companies.filter(c => c.quality  === 'dirty').length;
+  document.getElementById('cnt-incomplete').textContent= companies.filter(c => c.quality  === 'incomplete').length;
+  document.getElementById('cnt-none').textContent      = companies.filter(c => c.response === 'none').length;
+}
+
+// ── SELECT COMPANY ──
+function selectCompany(id) {
+  selectedId = id;
+  renderList();
+
+  const c = companies.find(x => x.id === id);
+  const panel = document.getElementById('detailPanel');
+  const color = getColor(c.name);
+
+  const historyHTML = c.history.length === 0
+    ? `<div style="color:var(--muted);font-size:11.5px;padding:8px 0;">Henüz kampanya geçmişi yok</div>`
+    : c.history.map(h => {
+        const dot = h.response === 'positive' ? 'var(--green)' : h.response === 'negative' ? 'var(--red)' : 'var(--muted)';
+        return `
+        <div class="history-row">
+          <div class="history-dot" style="background:${dot}"></div>
+          <div class="history-content">
+            <div class="history-campaign">${h.campaign}</div>
+            ${h.note ? `<div class="history-note">${h.note}</div>` : ''}
+          </div>
+          <div class="history-date">${h.date}</div>
+        </div>`;
+      }).join('');
+
+  const contactsHTML = c.contacts.map(ct => `
+    <div class="contact-row">
+      <span class="contact-icon">${ct.type === 'email' ? '✉️' : '📞'}</span>
+      <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${ct.value}</span>
+      ${ct.primary ? `<span class="badge badge-blue contact-primary">Birincil</span>` : ''}
+    </div>`).join('');
+
+  const sourcesHTML = c.sources.map(s =>
+    `<span class="badge badge-muted">${s}</span>`
+  ).join(' ');
+
+  panel.innerHTML = `
+    <div class="detail-header">
+      <div class="detail-avatar" style="background:${color}">${getInitials(c.name)}</div>
+      <div class="detail-name">${c.name}</div>
+      <div style="font-size:12px;color:var(--muted)">${c.sector} · ${c.city}</div>
+      <div class="detail-badges">
+        ${responseBadge(c.response, c.quality)}
+        ${c.domain ? `<span class="badge badge-muted">🌐 ${c.domain}</span>` : ''}
+      </div>
+    </div>
+
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-value">${c.contacts.filter(x=>x.type==='email').length}</div>
+        <div class="stat-label">Mail</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">${c.contacts.filter(x=>x.type==='phone').length}</div>
+        <div class="stat-label">Telefon</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">${c.history.length}</div>
+        <div class="stat-label">Kampanya</div>
+      </div>
+    </div>
+
+    <div class="detail-body">
+      <div class="detail-section">
+        <div class="detail-section-title">İletişim Bilgileri</div>
+        ${contactsHTML}
+      </div>
+
+      <div class="detail-section">
+        <div class="detail-section-title">Kaynaklar</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">${sourcesHTML}</div>
+      </div>
+
+      <div class="detail-section">
+        <div class="detail-section-title">Kampanya Geçmişi</div>
+        ${historyHTML}
+      </div>
+    </div>
+  `;
+}
+
+// ── DASHBOARD ──
+function renderDashboard() {
+  const total    = companies.length;
+  const positive = companies.filter(c => c.response === 'positive').length;
+  const negative = companies.filter(c => c.response === 'negative').length;
+  const dirty    = companies.filter(c => c.quality === 'dirty' || c.quality === 'incomplete').length;
+  const none     = companies.filter(c => c.response === 'none').length;
+
+  document.getElementById('kpi-total').textContent    = total;
+  document.getElementById('kpi-positive').textContent = positive;
+  document.getElementById('kpi-negative').textContent = negative;
+  document.getElementById('kpi-dirty').textContent    = dirty;
+  document.getElementById('kpi-positive-rate').textContent = `%${Math.round(positive/total*100)} dönüşüm oranı`;
+  document.getElementById('kpi-negative-rate').textContent = `%${Math.round(negative/total*100)} ret oranı`;
+
+  drawDonut(positive, negative, none, dirty);
+  renderSectorChart();
+  renderActivity();
+  renderSourceTable();
+}
+
+function drawDonut(pos, neg, none, dirty) {
+  const canvas = document.getElementById('donutCanvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const cx = 65, cy = 65, r = 52, inner = 34;
+  const total = pos + neg + none + dirty;
+  const segments = [
+    { val: pos,   color: '#c8c8c8' },
+    { val: neg,   color: '#606060' },
+    { val: none,  color: '#2a2a2a' },
+    { val: dirty, color: '#909090' },
+  ];
+
+  ctx.clearRect(0, 0, 130, 130);
+  let angle = -Math.PI / 2;
+  const gap = 0.03;
+
+  segments.forEach(seg => {
+    if (seg.val === 0) return;
+    const slice = (seg.val / total) * (Math.PI * 2) - gap;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, r, angle + gap/2, angle + slice + gap/2);
+    ctx.arc(cx, cy, inner, angle + slice + gap/2, angle + gap/2, true);
+    ctx.closePath();
+    ctx.fillStyle = seg.color;
+    ctx.fill();
+    angle += slice + gap;
+  });
+
+  // center text
+  ctx.fillStyle = '#efefef';
+  ctx.font = 'bold 18px Syne, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(total, cx, cy - 6);
+  ctx.fillStyle = '#555555';
+  ctx.font = '10px DM Mono, monospace';
+  ctx.fillText('şirket', cx, cy + 10);
+
+  // legend
+  const labels = ['Olumlu','Olumsuz','Dönüş Yok','Kirli/Eksik'];
+  const colors  = ['#c8c8c8','#606060','#2a2a2a','#909090'];
+  const vals    = [pos, neg, none, dirty];
+  document.getElementById('donutLegend').innerHTML = labels.map((l,i) => `
+    <div class="legend-row">
+      <div class="legend-dot" style="background:${colors[i]}"></div>
+      <span class="legend-label">${l}</span>
+      <span class="legend-val">${vals[i]}</span>
+      <span class="legend-pct">%${Math.round(vals[i]/total*100)}</span>
+    </div>`).join('');
+}
+
+function renderSectorChart() {
+  const counts = {};
+  companies.forEach(c => { counts[c.sector] = (counts[c.sector] || 0) + 1; });
+  const sorted = Object.entries(counts).sort((a,b) => b[1]-a[1]).slice(0,6);
+  const max = sorted[0][1];
+  const colors = ['#d4d4d4','#a0a0a0','#c8c8c8','#b0b0b0','#909090','#787878'];
+
+  document.getElementById('sectorChart').innerHTML = sorted.map(([sector, count], i) => `
+    <div class="bar-row">
+      <div class="bar-label">${sector}</div>
+      <div class="bar-track">
+        <div class="bar-fill" style="width:${Math.round(count/max*100)}%;background:${colors[i%colors.length]}"></div>
+      </div>
+      <div class="bar-num">${count}</div>
+    </div>`).join('');
+}
+
+function renderActivity() {
+  const activities = [];
+  companies.forEach(c => {
+    c.history.forEach(h => {
+      activities.push({ company: c.name, ...h });
+    });
+  });
+  activities.sort((a,b) => b.date.localeCompare(a.date));
+
+  const dotColor = r => r === 'positive' ? 'var(--green)' : r === 'negative' ? 'var(--red)' : 'var(--muted)';
+  const actionText = r => r === 'positive' ? 'olumlu dönüş verdi' : r === 'negative' ? 'olumsuz dönüş verdi' : 'mail açtı';
+
+  document.getElementById('activityList').innerHTML = activities.slice(0,6).map(a => `
+    <div class="activity-item">
+      <div class="activity-dot" style="background:${dotColor(a.response)}"></div>
+      <div class="activity-text">
+        <div><span class="activity-company">${a.company}</span> <span class="activity-action">${actionText(a.response)}</span></div>
+        ${a.note ? `<div class="activity-action" style="font-size:11px">${a.note}</div>` : ''}
+        <div class="activity-time">${a.campaign} · ${a.date}</div>
+      </div>
+    </div>`).join('') || '<div style="color:var(--muted);font-size:12px;padding:8px 0">Henüz aktivite yok</div>';
+}
+
+function renderSourceTable() {
+  const sourceMap = {};
+  companies.forEach(c => {
+    c.sources.forEach(s => {
+      if (!sourceMap[s]) sourceMap[s] = { total: 0, clean: 0 };
+      sourceMap[s].total++;
+      if (c.quality === 'clean') sourceMap[s].clean++;
+    });
+  });
+
+  document.getElementById('sourceTableBody').innerHTML = Object.entries(sourceMap)
+    .sort((a,b) => b[1].total - a[1].total)
+    .map(([src, d]) => {
+      const pct = Math.round(d.clean / d.total * 100);
+      return `
+      <tr>
+        <td>${src}</td>
+        <td>${d.total}</td>
+        <td>
+          <div class="quality-bar-wrap">
+            <div class="quality-bar-track">
+              <div class="quality-bar-fill" style="width:${pct}%;background:${pct>70?'var(--green)':pct>40?'var(--amber)':'var(--red)'}"></div>
+            </div>
+          </div>
+        </td>
+        <td style="color:${pct>70?'var(--green)':pct>40?'var(--amber)':'var(--red)'}">%${pct}</td>
+      </tr>`;
+    }).join('');
+}
+
+// ── INIT ──
+renderList();
+</script>
+</body>
+</html>
