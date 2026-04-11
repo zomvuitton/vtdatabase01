@@ -1167,8 +1167,8 @@
         <input class="search-input" type="text" placeholder="Şirket adı, mail, sektör ara..." oninput="filterCompanies(this.value)" id="searchInput">
       </div>
       <div class="topbar-actions">
-        <button class="btn btn-ghost">↑ İçe Aktar</button>
-        <button class="btn btn-primary">+ Şirket Ekle</button>
+        <button class="btn btn-ghost" onclick="document.getElementById('csvImportInput').click()">↑ İçe Aktar</button><input type="file" id="csvImportInput" style="display:none" accept=".csv,.xlsx,.xls" onchange="handleCSVImport(this)">
+        <button class="btn btn-primary" onclick="openAddCompanyModal()">+ Şirket Ekle</button>
       </div>
     </div>
 
@@ -1220,7 +1220,7 @@
       <div class="topbar">
         <div class="topbar-title">Dashboard</div>
         <div style="margin-left:auto;display:flex;gap:10px">
-          <button class="btn btn-ghost">↓ Rapor İndir</button>
+          <button class="btn btn-ghost" onclick="downloadReport()">↓ Rapor İndir</button>
         </div>
       </div>
 
@@ -1452,11 +1452,75 @@
         </div>
       </div>
     </div>
+    <!-- SCREEN: DUPLICATE'LER -->
     <div class="screen" id="screen-duplicates">
-      <div class="topbar"><div class="topbar-title">Duplicate'ler</div></div>
-      <div style="flex:1;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;color:var(--muted)">
-        <div style="font-size:40px;opacity:.3">⚠️</div>
-        <div style="font-size:13px">Yakında eklenecek</div>
+      <div class="topbar">
+        <div class="topbar-title">Duplicate'ler</div>
+        <div style="margin-left:auto;display:flex;gap:10px;align-items:center">
+          <span style="font-size:12px;color:var(--muted)" id="dupCount"></span>
+          <button class="btn btn-ghost" onclick="autoMergeAll()">⚡ Tümünü Birleştir</button>
+        </div>
+      </div>
+      <div style="flex:1;display:grid;grid-template-columns:1fr 340px;overflow:hidden">
+
+        <!-- LEFT: duplicate pairs list -->
+        <div style="display:flex;flex-direction:column;overflow:hidden;border-right:1px solid var(--border)">
+          <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;gap:8px">
+            <div class="filter-chip active" onclick="setDupFilter('pending',this)" style="font-size:11px;padding:4px 11px">Bekleyen <span class="filter-count" id="dcnt-pending">0</span></div>
+            <div class="filter-chip" onclick="setDupFilter('resolved',this)" style="font-size:11px;padding:4px 11px">Çözüldü <span class="filter-count" id="dcnt-resolved">0</span></div>
+            <div class="filter-chip" onclick="setDupFilter('all',this)" style="font-size:11px;padding:4px 11px">Tümü</div>
+          </div>
+          <div style="flex:1;overflow-y:auto;padding:12px;scrollbar-width:thin;scrollbar-color:var(--surface3) transparent" id="dupList"></div>
+        </div>
+
+        <!-- RIGHT: detail -->
+        <div style="overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--surface3) transparent" id="dupDetail">
+          <div style="height:100%;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;color:var(--muted)">
+            <div style="font-size:36px;opacity:.3">⚠️</div>
+            <div style="font-size:12px">Detay için çift seç</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- MODAL: Şirket Ekle -->
+    <div class="modal-overlay" id="addCompanyModal" onclick="if(event.target===this)closeAddCompanyModal()">
+      <div class="modal">
+        <div class="modal-title">Yeni Şirket Ekle <button class="modal-close" onclick="closeAddCompanyModal()">✕</button></div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Şirket Adı *</label><input class="form-input" id="ac-name" placeholder="Meridian Teknoloji"></div>
+          <div class="form-group"><label class="form-label">Domain</label><input class="form-input" id="ac-domain" placeholder="ornek.com.tr"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Sektör</label><input class="form-input" id="ac-sector" placeholder="Yazılım & SaaS"></div>
+          <div class="form-group"><label class="form-label">Şehir</label><input class="form-input" id="ac-city" placeholder="İstanbul"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Mail</label><input class="form-input" id="ac-email" placeholder="info@ornek.com.tr"></div>
+          <div class="form-group"><label class="form-label">Telefon</label><input class="form-input" id="ac-phone" placeholder="+90 212 000 00 00"></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Veri Kalitesi</label>
+          <select class="form-select" id="ac-quality">
+            <option value="clean">Temiz</option>
+            <option value="incomplete" selected>Eksik</option>
+            <option value="dirty">Kirli</option>
+          </select>
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-ghost" onclick="closeAddCompanyModal()">İptal</button>
+          <button class="btn btn-primary" onclick="addCompany()">Şirket Ekle</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL: CSV Import -->
+    <div class="modal-overlay" id="importResultModal" onclick="if(event.target===this)this.classList.remove('open')">
+      <div class="modal" style="width:420px">
+        <div class="modal-title">İçe Aktarma Sonucu <button class="modal-close" onclick="document.getElementById('importResultModal').classList.remove('open')">✕</button></div>
+        <div id="importResultBody" style="font-size:13px;line-height:1.8;color:var(--muted2)"></div>
+        <div class="modal-actions"><button class="btn btn-primary" onclick="document.getElementById('importResultModal').classList.remove('open')">Tamam</button></div>
       </div>
     </div>
     <div class="screen" id="screen-settings">
@@ -1672,6 +1736,267 @@ const companies = [
   },
 ];
 
+
+
+// ── DUPLICATES DATA ──
+let duplicatesData = [
+  { id:1, masterId:1,  dupId:7,  masterName:'Meridian Teknoloji',  dupName:'Meridian Tech Ltd.',    reason:'fuzzy_name',  score:87, resolved:false },
+  { id:2, masterId:4,  dupId:9,  masterName:'Vega Finans',         dupName:'Vega Finans A.Ş.',      reason:'same_domain', score:100,resolved:false },
+  { id:3, masterId:2,  dupId:11, masterName:'Atlas Lojistik A.Ş.', dupName:'Atlas Lojistik Ltd.',   reason:'same_email',  score:95, resolved:false },
+  { id:4, masterId:6,  dupId:10, masterName:'Polaris Enerji',      dupName:'Polaris Enerji Grup',   reason:'fuzzy_name',  score:79, resolved:false },
+  { id:5, masterId:3,  dupId:12, masterName:'Bora Medya Grup',     dupName:'Bora Medya İletişim',   reason:'fuzzy_name',  score:72, resolved:true  },
+  { id:6, masterId:5,  dupId:8,  masterName:'Helix Danışmanlık',   dupName:'Helix Consulting Co.',  reason:'same_email',  score:95, resolved:true  },
+];
+
+let activeDupFilter = 'pending';
+let selectedDupId   = null;
+let nextDupId       = 7;
+
+const reasonLabel = {
+  same_domain: '🌐 Aynı Domain',
+  same_email:  '✉️ Aynı Email',
+  fuzzy_name:  '🔤 Benzer İsim',
+};
+
+function setDupFilter(f, el) {
+  activeDupFilter = f;
+  document.querySelectorAll('#screen-duplicates .filter-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  renderDuplicates();
+}
+
+function getFilteredDups() {
+  return duplicatesData.filter(d =>
+    activeDupFilter === 'all' ? true :
+    activeDupFilter === 'pending'  ? !d.resolved :
+    activeDupFilter === 'resolved' ?  d.resolved : true
+  );
+}
+
+function renderDuplicates() {
+  const pending  = duplicatesData.filter(d => !d.resolved).length;
+  const resolved = duplicatesData.filter(d =>  d.resolved).length;
+  document.getElementById('dcnt-pending').textContent  = pending;
+  document.getElementById('dcnt-resolved').textContent = resolved;
+  document.getElementById('dupCount').textContent      = pending + ' bekleyen';
+
+  const list = getFilteredDups();
+  const el   = document.getElementById('dupList');
+
+  if (!list.length) {
+    el.innerHTML = `<div style="text-align:center;color:var(--muted);padding:40px 16px;font-size:12px">${activeDupFilter==='pending' ? '✅ Bekleyen duplicate yok' : 'Sonuç bulunamadı'}</div>`;
+    return;
+  }
+
+  el.innerHTML = list.map(d => {
+    const scoreColor = d.score >= 90 ? 'var(--text)' : d.score >= 75 ? 'var(--muted2)' : 'var(--muted)';
+    return `
+    <div class="company-card ${selectedDupId===d.id?'selected':''}" onclick="selectDup(${d.id})" style="margin-bottom:8px">
+      <div style="flex:1;min-width:0">
+        <div style="font-family:var(--font-head);font-size:13px;font-weight:600;margin-bottom:6px;display:flex;align-items:center;gap:8px">
+          ${d.resolved ? '<span style="font-size:10px;color:var(--muted)">[Çözüldü]</span>' : ''}
+          <span style="color:var(--text)">${d.masterName}</span>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:8px">vs &nbsp;<span style="color:var(--muted2)">${d.dupName}</span></div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <span class="badge badge-muted" style="font-size:10px">${reasonLabel[d.reason]||d.reason}</span>
+          <span style="font-size:11px;color:${scoreColor};margin-left:auto">%${d.score} eşleşme</span>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function selectDup(id) {
+  selectedDupId = id;
+  renderDuplicates();
+  const d   = duplicatesData.find(x => x.id === id);
+  const det = document.getElementById('dupDetail');
+
+  det.innerHTML = `
+    <div style="padding:20px">
+      <div style="font-family:var(--font-head);font-size:16px;font-weight:700;margin-bottom:4px">Duplicate Analizi</div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:20px">${reasonLabel[d.reason]} · %${d.score} benzerlik</div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px">
+        <div style="background:var(--surface2);border-radius:10px;padding:14px;border:1px solid var(--border)">
+          <div style="font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:8px">Asıl Kayıt</div>
+          <div style="font-family:var(--font-head);font-size:13px;font-weight:700;margin-bottom:4px">${d.masterName}</div>
+          <div style="font-size:10.5px;color:var(--muted)">ID #${d.masterId}</div>
+        </div>
+        <div style="background:var(--surface2);border-radius:10px;padding:14px;border:1px solid rgba(255,255,255,0.04)">
+          <div style="font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:8px">Duplicate</div>
+          <div style="font-family:var(--font-head);font-size:13px;font-weight:700;margin-bottom:4px">${d.dupName}</div>
+          <div style="font-size:10.5px;color:var(--muted)">ID #${d.dupId}</div>
+        </div>
+      </div>
+
+      <div style="background:var(--surface2);border-radius:10px;padding:14px;margin-bottom:20px">
+        <div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:10px">Eşleşme Skoru</div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="flex:1;height:8px;background:var(--surface3);border-radius:4px;overflow:hidden">
+            <div style="height:100%;width:${d.score}%;background:var(--accent);border-radius:4px;transition:width .4s"></div>
+          </div>
+          <span style="font-family:var(--font-head);font-size:16px;font-weight:700">%${d.score}</span>
+        </div>
+      </div>
+
+      ${d.resolved ? `
+        <div style="text-align:center;color:var(--muted);font-size:12px;padding:12px 0">Bu duplicate çözümlendi</div>
+        <button class="btn btn-ghost" style="width:100%" onclick="unresolve(${d.id})">Geri Al</button>
+      ` : `
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <button class="btn btn-primary" onclick="mergeDup(${d.id})">✓ Birleştir</button>
+          <button class="btn btn-ghost" onclick="dismissDup(${d.id})">✕ Reddet</button>
+        </div>
+      `}
+    </div>`;
+}
+
+function mergeDup(id) {
+  const d = duplicatesData.find(x => x.id === id);
+  d.resolved = true;
+  selectedDupId = null;
+  renderDuplicates();
+  document.getElementById('dupDetail').innerHTML = `<div style="height:100%;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;color:var(--muted)"><div style="font-size:36px;opacity:.3">✅</div><div style="font-size:12px">Birleştirildi</div></div>`;
+}
+
+function dismissDup(id) {
+  duplicatesData = duplicatesData.filter(x => x.id !== id);
+  selectedDupId = null;
+  renderDuplicates();
+  document.getElementById('dupDetail').innerHTML = `<div style="height:100%;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;color:var(--muted)"><div style="font-size:36px;opacity:.3">⚠️</div><div style="font-size:12px">Detay için çift seç</div></div>`;
+}
+
+function unresolve(id) {
+  const d = duplicatesData.find(x => x.id === id);
+  d.resolved = false;
+  renderDuplicates();
+  selectDup(id);
+}
+
+function autoMergeAll() {
+  duplicatesData.filter(d => !d.resolved && d.score >= 90).forEach(d => d.resolved = true);
+  selectedDupId = null;
+  renderDuplicates();
+  document.getElementById('dupDetail').innerHTML = `<div style="height:100%;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;color:var(--muted)"><div style="font-size:36px;opacity:.3">✅</div><div style="font-size:12px">Yüksek skorlular birleştirildi</div></div>`;
+}
+
+// ── ADD COMPANY MODAL ──
+function openAddCompanyModal()  { document.getElementById('addCompanyModal').classList.add('open'); }
+function closeAddCompanyModal() { document.getElementById('addCompanyModal').classList.remove('open'); }
+
+function addCompany() {
+  const name   = document.getElementById('ac-name').value.trim();
+  if (!name) { document.getElementById('ac-name').focus(); return; }
+  const email  = document.getElementById('ac-email').value.trim();
+  const phone  = document.getElementById('ac-phone').value.trim();
+  const contacts = [];
+  if (email) contacts.push({ type:'email', value:email, primary:true });
+  if (phone) contacts.push({ type:'phone', value:phone, primary:true });
+
+  const newCompany = {
+    id:       companies.length + 100 + Math.floor(Math.random()*100),
+    name,
+    domain:   document.getElementById('ac-domain').value.trim(),
+    sector:   document.getElementById('ac-sector').value.trim() || 'Diğer',
+    city:     document.getElementById('ac-city').value.trim()   || '—',
+    quality:  document.getElementById('ac-quality').value,
+    response: 'none',
+    contacts,
+    sources:  ['Manuel Giriş'],
+    history:  [],
+  };
+
+  companies.unshift(newCompany);
+  closeAddCompanyModal();
+  ['ac-name','ac-domain','ac-sector','ac-city','ac-email','ac-phone'].forEach(id => document.getElementById(id).value = '');
+  renderList();
+}
+
+// ── CSV IMPORT ──
+function handleCSVImport(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const lines = e.target.result.split('\n').filter(l => l.trim());
+    let added = 0, skipped = 0;
+    lines.slice(1).forEach(line => {
+      const cols = line.split(',').map(s => s.replace(/^"|"$/g,'').trim());
+      const name = cols[0];
+      if (!name) { skipped++; return; }
+      const existing = companies.find(c => c.name.toLowerCase() === name.toLowerCase());
+      if (existing) { skipped++; return; }
+      companies.push({
+        id: companies.length + 200 + Math.floor(Math.random()*100),
+        name,
+        domain:   cols[1] || '',
+        sector:   cols[2] || 'Diğer',
+        city:     cols[3] || '—',
+        quality:  'incomplete',
+        response: 'none',
+        contacts: cols[4] ? [{ type:'email', value:cols[4], primary:true }] : [],
+        sources:  [file.name],
+        history:  [],
+      });
+      added++;
+    });
+    renderList();
+    document.getElementById('importResultBody').innerHTML = `
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="background:var(--surface2);border-radius:9px;padding:14px;display:flex;justify-content:space-between">
+          <span>✅ Eklenen şirket</span><strong>${added}</strong>
+        </div>
+        <div style="background:var(--surface2);border-radius:9px;padding:14px;display:flex;justify-content:space-between">
+          <span>⏭ Atlanan (duplicate/boş)</span><strong>${skipped}</strong>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">
+          CSV formatı: Ad, Domain, Sektör, Şehir, Email
+        </div>
+      </div>`;
+    document.getElementById('importResultModal').classList.add('open');
+    input.value = '';
+  };
+  reader.readAsText(file);
+}
+
+// ── RAPOR İNDİR ──
+function downloadReport() {
+  const total    = companies.length;
+  const positive = companies.filter(c => c.response === 'positive').length;
+  const negative = companies.filter(c => c.response === 'negative').length;
+  const dirty    = companies.filter(c => c.quality  === 'dirty').length;
+  const incomplete = companies.filter(c => c.quality === 'incomplete').length;
+  const none     = companies.filter(c => c.response === 'none').length;
+  const date     = new Date().toLocaleDateString('tr-TR');
+
+  const rows = companies.map(c => {
+    const email = c.contacts.find(x => x.type==='email');
+    const phone = c.contacts.find(x => x.type==='phone');
+    return [c.name, c.sector, c.city, c.domain, email?email.value:'', phone?phone.value:'', c.quality, c.response].join(',');
+  }).join('\n');
+
+  const csv = `CRM Raporu - ${date}\n\n`
+    + `Özet\n`
+    + `Toplam Şirket,${total}\n`
+    + `Olumlu Dönüş,${positive}\n`
+    + `Olumsuz Dönüş,${negative}\n`
+    + `Dönüş Yok,${none}\n`
+    + `Kirli Veri,${dirty}\n`
+    + `Eksik Veri,${incomplete}\n\n`
+    + `Şirket Listesi\n`
+    + `Ad,Sektör,Şehir,Domain,Email,Telefon,Kalite,Dönüş\n`
+    + rows;
+
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = `crm-rapor-${date.replace(/\./g,'-')}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 // ── FILES DATA ──
 const fileTypeEmoji = { pptx:'📊', psd:'🎨', pdf:'📄', key:'📊', ai:'✏️', sketch:'💎', other:'📁' };
@@ -2090,6 +2415,7 @@ function setNav(el, screen) {
   if (screen === 'dashboard')  renderDashboard();
   if (screen === 'campaigns')  renderCampList();
   if (screen === 'files')      renderFiles();
+  if (screen === 'duplicates') renderDuplicates();
 }
 
 function filterCompanies(val) {
