@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>CRM Panel</title>
+<title>Harman</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -1093,6 +1093,28 @@
   .drop-text { font-size: 12px; }
   .drop-sub  { font-size: 10.5px; color: var(--muted); }
 
+  /* ── TOGGLE ── */
+  .toggle-wrap {
+    width: 40px; height: 22px;
+    border-radius: 11px;
+    background: var(--surface3);
+    border: 1px solid var(--border);
+    position: relative;
+    cursor: pointer;
+    transition: background .2s;
+    flex-shrink: 0;
+  }
+  .toggle-wrap[data-on="true"]  { background: var(--accent2); }
+  .toggle-knob {
+    position: absolute;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: var(--muted);
+    top: 2px; left: 2px;
+    transition: left .2s, background .2s;
+  }
+  .toggle-wrap[data-on="true"] .toggle-knob { left: 20px; background: #0a0a0a; }
+
   /* ── SCROLLBAR ── */
   ::-webkit-scrollbar { width: 4px; }
   ::-webkit-scrollbar-track { background: transparent; }
@@ -1118,6 +1140,41 @@
 </style>
 </head>
 <body>
+<!-- LOGIN SCREEN -->
+<div id="loginScreen" style="position:fixed;inset:0;background:#0a0a0a;display:flex;align-items:center;justify-content:center;z-index:9999;font-family:'DM Mono',monospace">
+  <div style="width:340px">
+    <div style="text-align:center;margin-bottom:36px">
+      <div style="width:48px;height:48px;background:linear-gradient(135deg,#404040,#1e1e1e);border-radius:14px;display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:800;font-size:20px;color:#efefef;margin:0 auto 14px">C</div>
+      <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:#efefef;margin-bottom:4px">Harman</div>
+      <div style="font-size:11px;color:#555">Devam etmek için giriş yapın</div>
+    </div>
+    <div style="background:#111111;border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:28px">
+      <div style="margin-bottom:16px">
+        <label style="display:block;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#555;margin-bottom:6px">Kullanıcı Adı</label>
+        <input id="loginUser" type="text" autocomplete="username"
+          style="width:100%;background:#1a1a1a;border:1px solid rgba(255,255,255,0.08);border-radius:9px;padding:11px 13px;color:#efefef;font-family:'DM Mono',monospace;font-size:13px;outline:none;transition:border-color .15s"
+          placeholder="kullanıcı adı"
+          onfocus="this.style.borderColor='#d4d4d4'" onblur="this.style.borderColor='rgba(255,255,255,0.08)'"
+          onkeydown="if(event.key==='Enter')document.getElementById('loginPass').focus()">
+      </div>
+      <div style="margin-bottom:20px">
+        <label style="display:block;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#555;margin-bottom:6px">Şifre</label>
+        <input id="loginPass" type="password" autocomplete="current-password"
+          style="width:100%;background:#1a1a1a;border:1px solid rgba(255,255,255,0.08);border-radius:9px;padding:11px 13px;color:#efefef;font-family:'DM Mono',monospace;font-size:13px;outline:none;transition:border-color .15s"
+          placeholder="••••••••••••"
+          onfocus="this.style.borderColor='#d4d4d4'" onblur="this.style.borderColor='rgba(255,255,255,0.08)'"
+          onkeydown="if(event.key==='Enter')doLogin()">
+      </div>
+      <div id="loginError" style="font-size:11px;color:#606060;margin-bottom:12px;min-height:16px;text-align:center"></div>
+      <button onclick="doLogin()"
+        style="width:100%;background:#d4d4d4;color:#0a0a0a;border:none;border-radius:9px;padding:12px;font-family:'DM Mono',monospace;font-size:13px;font-weight:500;cursor:pointer;transition:background .15s"
+        onmouseover="this.style.background='#b0b0b0'" onmouseout="this.style.background='#d4d4d4'">
+        Giriş Yap
+      </button>
+    </div>
+  </div>
+</div>
+
 <div class="app">
 
   <!-- SIDEBAR -->
@@ -1523,11 +1580,87 @@
         <div class="modal-actions"><button class="btn btn-primary" onclick="document.getElementById('importResultModal').classList.remove('open')">Tamam</button></div>
       </div>
     </div>
+    <!-- SCREEN: AYARLAR -->
     <div class="screen" id="screen-settings">
       <div class="topbar"><div class="topbar-title">Ayarlar</div></div>
-      <div style="flex:1;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;color:var(--muted)">
-        <div style="font-size:40px;opacity:.3">⚙️</div>
-        <div style="font-size:13px">Yakında eklenecek</div>
+      <div style="flex:1;overflow-y:auto;padding:28px;scrollbar-width:thin;scrollbar-color:var(--surface3) transparent">
+        <div style="max-width:600px;display:flex;flex-direction:column;gap:20px">
+
+          <!-- Profil -->
+          <div class="dash-card">
+            <div class="dash-card-title" style="margin-bottom:18px">Hesap</div>
+            <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px">
+              <div style="width:52px;height:52px;border-radius:14px;background:var(--surface3);display:flex;align-items:center;justify-content:center;font-family:var(--font-head);font-size:20px;font-weight:700;color:var(--text)">H</div>
+              <div>
+                <div style="font-family:var(--font-head);font-size:15px;font-weight:700" id="settingsUsername">harman</div>
+                <div style="font-size:11px;color:var(--muted)">Yönetici</div>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Kullanıcı Adı</label>
+                <input class="form-input" id="set-username" value="harman">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Yeni Şifre</label>
+                <input class="form-input" id="set-password" type="password" placeholder="••••••••">
+              </div>
+            </div>
+            <button class="btn btn-primary" style="margin-top:4px" onclick="saveCredentials()">Kaydet</button>
+            <div id="credSaveMsg" style="font-size:11px;color:var(--muted2);margin-top:8px;min-height:14px"></div>
+          </div>
+
+          <!-- Veri kaynakları -->
+          <div class="dash-card">
+            <div class="dash-card-title" style="margin-bottom:16px">Veri Kaynakları</div>
+            <div id="sourcesList" style="display:flex;flex-direction:column;gap:8px"></div>
+            <div style="display:flex;gap:8px;margin-top:12px">
+              <input class="form-input" id="newSourceInput" placeholder="Yeni kaynak adı..." style="flex:1">
+              <button class="btn btn-ghost" onclick="addSource()">+ Ekle</button>
+            </div>
+          </div>
+
+          <!-- Genel -->
+          <div class="dash-card">
+            <div class="dash-card-title" style="margin-bottom:16px">Genel</div>
+            <div style="display:flex;flex-direction:column;gap:12px">
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:12px;background:var(--surface2);border-radius:9px">
+                <div>
+                  <div style="font-size:12px;color:var(--text)">Otomatik Duplicate Tespiti</div>
+                  <div style="font-size:10.5px;color:var(--muted)">Yeni şirket eklendiğinde çalışır</div>
+                </div>
+                <div class="toggle-wrap" onclick="toggleSetting(this)" data-on="true">
+                  <div class="toggle-knob"></div>
+                </div>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:12px;background:var(--surface2);border-radius:9px">
+                <div>
+                  <div style="font-size:12px;color:var(--text)">Mail Gönderim Bildirimleri</div>
+                  <div style="font-size:10.5px;color:var(--muted)">Kampanya tamamlandığında bildir</div>
+                </div>
+                <div class="toggle-wrap" onclick="toggleSetting(this)" data-on="false">
+                  <div class="toggle-knob"></div>
+                </div>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:12px;background:var(--surface2);border-radius:9px">
+                <div>
+                  <div style="font-size:12px;color:var(--text)">Kirli Veri Uyarıları</div>
+                  <div style="font-size:10.5px;color:var(--muted)">Import sırasında uyar</div>
+                </div>
+                <div class="toggle-wrap" onclick="toggleSetting(this)" data-on="true">
+                  <div class="toggle-knob"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tehlike bölgesi -->
+          <div class="dash-card" style="border-color:rgba(255,255,255,0.06)">
+            <div class="dash-card-title" style="margin-bottom:16px">Oturum</div>
+            <button class="btn btn-ghost" style="width:100%;justify-content:center" onclick="doLogout()">⏻ Çıkış Yap</button>
+          </div>
+
+        </div>
       </div>
     </div>
 
@@ -1535,6 +1668,84 @@
 </div>
 
 <script>
+
+// ── AUTH ──
+let currentUser = { username: 'harman', password: 'databasedemo' };
+
+function doLogin() {
+  const u = document.getElementById('loginUser').value.trim();
+  const p = document.getElementById('loginPass').value;
+  const err = document.getElementById('loginError');
+  if (u === currentUser.username && p === currentUser.password) {
+    document.getElementById('loginScreen').style.display = 'none';
+    err.textContent = '';
+  } else {
+    err.textContent = 'Kullanıcı adı veya şifre hatalı';
+    document.getElementById('loginPass').value = '';
+    document.getElementById('loginPass').focus();
+    document.getElementById('loginScreen').querySelector('button').style.background = '#3a3a3a';
+    setTimeout(() => document.getElementById('loginScreen').querySelector('button').style.background = '#d4d4d4', 600);
+  }
+}
+
+function doLogout() {
+  document.getElementById('loginUser').value = '';
+  document.getElementById('loginPass').value = '';
+  document.getElementById('loginScreen').style.display = 'flex';
+}
+
+// ── SETTINGS ──
+let sourcesData = ['LinkedIn','Kaynak Panel A','Kaynak Panel B','Kaynak Panel C','Kaynak Panel D','Manuel Giriş'];
+
+function renderSettings() {
+  document.getElementById('set-username').value = currentUser.username;
+  document.getElementById('set-password').value = '';
+  document.getElementById('settingsUsername').textContent = currentUser.username;
+  renderSourcesList();
+}
+
+function saveCredentials() {
+  const u = document.getElementById('set-username').value.trim();
+  const p = document.getElementById('set-password').value;
+  const msg = document.getElementById('credSaveMsg');
+  if (!u) { msg.textContent = 'Kullanıcı adı boş olamaz.'; return; }
+  if (u) currentUser.username = u;
+  if (p) currentUser.password = p;
+  document.getElementById('settingsUsername').textContent = currentUser.username;
+  document.getElementById('set-password').value = '';
+  msg.textContent = '✓ Kaydedildi';
+  setTimeout(() => msg.textContent = '', 2000);
+}
+
+function renderSourcesList() {
+  const el = document.getElementById('sourcesList');
+  if (!el) return;
+  el.innerHTML = sourcesData.map((s, i) => `
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 13px;background:var(--surface2);border-radius:9px;font-size:12px">
+      <span style="flex:1;color:var(--text)">📡 ${s}</span>
+      <button onclick="removeSource(${i})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;padding:0 4px" title="Sil">✕</button>
+    </div>`).join('');
+}
+
+function addSource() {
+  const input = document.getElementById('newSourceInput');
+  const val = input.value.trim();
+  if (!val) return;
+  sourcesData.push(val);
+  input.value = '';
+  renderSourcesList();
+}
+
+function removeSource(i) {
+  sourcesData.splice(i, 1);
+  renderSourcesList();
+}
+
+function toggleSetting(el) {
+  const on = el.getAttribute('data-on') === 'true';
+  el.setAttribute('data-on', String(!on));
+}
+
 // ── SAMPLE DATA ──
 const companies = [
   {
@@ -2416,6 +2627,7 @@ function setNav(el, screen) {
   if (screen === 'campaigns')  renderCampList();
   if (screen === 'files')      renderFiles();
   if (screen === 'duplicates') renderDuplicates();
+  if (screen === 'settings')   renderSettings();
 }
 
 function filterCompanies(val) {
