@@ -1496,16 +1496,61 @@
     </div>
 
     <!-- FILE DETAIL MODAL -->
-    <div class="modal-overlay" id="fileDetailModal" onclick="closeFileModal(event)">
-      <div class="modal" style="width:400px">
+    <div class="modal-overlay" id="fileDetailModal" onclick="if(event.target===this)document.getElementById('fileDetailModal').classList.remove('open')">
+      <div class="modal" style="width:480px">
         <div class="modal-title">
           <span id="fileModalTitle">Dosya Detayı</span>
           <button class="modal-close" onclick="document.getElementById('fileDetailModal').classList.remove('open')">✕</button>
         </div>
-        <div id="fileModalBody"></div>
-        <div class="modal-actions">
-          <button class="btn btn-ghost" onclick="deleteSelectedFile()">🗑 Sil</button>
-          <button class="btn btn-ghost" onclick="document.getElementById('fileDetailModal').classList.remove('open')">Kapat</button>
+
+        <!-- Preview -->
+        <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px;padding:16px;background:var(--surface2);border-radius:10px">
+          <div style="font-size:44px;width:60px;text-align:center" id="fmd-emoji"></div>
+          <div style="flex:1;min-width:0">
+            <div style="font-family:var(--font-head);font-size:15px;font-weight:700;margin-bottom:2px" id="fmd-name-display"></div>
+            <div style="font-size:11px;color:var(--muted)" id="fmd-meta"></div>
+          </div>
+        </div>
+
+        <!-- Editable fields -->
+        <div class="form-group">
+          <label class="form-label">Dosya Adı</label>
+          <input class="form-input" id="fmd-name" placeholder="Dosya adı">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Yıl</label>
+            <select class="form-select" id="fmd-year"></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Tür</label>
+            <select class="form-select" id="fmd-type">
+              <option value="pptx">PPTX</option>
+              <option value="psd">PSD</option>
+              <option value="pdf">PDF</option>
+              <option value="other">Diğer</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Yapan Kişi</label>
+          <input class="form-input" id="fmd-uploader" placeholder="Ad Soyad">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Açıklama</label>
+          <textarea class="form-textarea" id="fmd-desc" placeholder="Dosya hakkında notlar..." style="min-height:70px"></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Etiketler (virgülle ayır)</label>
+          <input class="form-input" id="fmd-tags" placeholder="sunum, kurumsal, 2024">
+        </div>
+
+        <div class="modal-actions" style="justify-content:space-between">
+          <button type="button" class="btn btn-ghost" style="color:var(--red)" onclick="deleteSelectedFile()">🗑 Sil</button>
+          <div style="display:flex;gap:8px">
+            <button type="button" class="btn btn-ghost" onclick="document.getElementById('fileDetailModal').classList.remove('open')">İptal</button>
+            <button type="button" class="btn btn-primary" onclick="saveFileEdit()">Kaydet</button>
+          </div>
         </div>
       </div>
     </div>
@@ -2513,6 +2558,11 @@ function setFileYear(year, el) {
   renderFiles();
 }
 
+function setFileYearSelect(year) {
+  activeFileYear = year;
+  renderFiles();
+}
+
 function filterFiles(val) {
   fileSearchQuery = val.toLowerCase();
   renderFiles();
@@ -2569,36 +2619,52 @@ function renderFiles() {
 function openFileModal(id) {
   selectedFileId = id;
   const f = filesData.find(x => x.id === id);
+  if (!f) return;
   const emoji = fileTypeEmoji[f.type] || '📁';
-  document.getElementById('fileModalTitle').textContent = f.name;
-  document.getElementById('fileModalBody').innerHTML = `
-    <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px">
-      <div style="font-size:48px;background:var(--surface2);border-radius:12px;width:72px;height:72px;display:flex;align-items:center;justify-content:center">${emoji}</div>
-      <div>
-        <div style="font-family:var(--font-head);font-size:15px;font-weight:700;margin-bottom:4px">${f.name}</div>
-        <div style="font-size:11px;color:var(--muted)">${f.type.toUpperCase()} · ${f.size} · ${f.year}</div>
-      </div>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
-      <div style="background:var(--surface2);border-radius:9px;padding:12px">
-        <div style="font-size:10px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.06em">Yüklendi</div>
-        <div style="font-size:12px">${f.uploadedAt}</div>
-      </div>
-      <div style="background:var(--surface2);border-radius:9px;padding:12px">
-        <div style="font-size:10px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.06em">Boyut</div>
-        <div style="font-size:12px">${f.size}</div>
-      </div>
-    </div>
-    <div style="margin-bottom:12px">
-      <div style="font-size:10px;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em">Etiketler</div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap">${f.tags.map(t=>`<span class="file-tag" style="font-size:11px;padding:4px 10px">${t}</span>`).join('')}</div>
-    </div>`;
+
+  document.getElementById('fileModalTitle').textContent  = 'Dosya Detayı';
+  document.getElementById('fmd-emoji').textContent       = emoji;
+  document.getElementById('fmd-name-display').textContent = f.name;
+  document.getElementById('fmd-meta').textContent        = f.type.toUpperCase() + ' · ' + f.size + ' · ' + (f.uploadedAt || '—');
+  document.getElementById('fmd-name').value              = f.name;
+  document.getElementById('fmd-type').value              = f.type;
+  document.getElementById('fmd-uploader').value          = f.uploadedBy || '';
+  document.getElementById('fmd-desc').value              = f.description || '';
+  document.getElementById('fmd-tags').value              = (f.tags || []).join(', ');
+
+  // populate year dropdown 2016–2026
+  const yearSel = document.getElementById('fmd-year');
+  yearSel.innerHTML = '';
+  for (let y = 2026; y >= 2016; y--) {
+    const opt = document.createElement('option');
+    opt.value = y; opt.textContent = y;
+    if (y === f.year) opt.selected = true;
+    yearSel.appendChild(opt);
+  }
+
   document.getElementById('fileDetailModal').classList.add('open');
 }
 
 function closeFileModal(e) {
   if (e.target === document.getElementById('fileDetailModal'))
     document.getElementById('fileDetailModal').classList.remove('open');
+}
+
+function saveFileEdit() {
+  const f = filesData.find(x => x.id === selectedFileId);
+  if (!f) return;
+  const name = document.getElementById('fmd-name').value.trim();
+  if (!name) { document.getElementById('fmd-name').focus(); return; }
+  f.name        = name;
+  f.type        = document.getElementById('fmd-type').value;
+  f.year        = parseInt(document.getElementById('fmd-year').value);
+  f.uploadedBy  = document.getElementById('fmd-uploader').value.trim();
+  f.description = document.getElementById('fmd-desc').value.trim();
+  f.tags        = document.getElementById('fmd-tags').value.split(',').map(t => t.trim()).filter(Boolean);
+  saveToStorage();
+  document.getElementById('fileDetailModal').classList.remove('open');
+  renderFiles();
+  showToast('✓ Dosya güncellendi');
 }
 
 function deleteSelectedFile() {
@@ -2753,7 +2819,7 @@ function renderCampList() {
     const pos   = c.sends.filter(s => s.response === 'positive').length;
     const rate  = total ? Math.round(pos / total * 100) : 0;
     return `
-    <div class="camp-card ${selectedCampId === c.id ? 'selected' : ''}" onclick="selectCampaign(${c.id})">
+    <div class="camp-card ${selectedCampId === c.id ? 'selected' : ''}" onclick="selectCampaign('${c.id}')">
       <div class="camp-card-head">
         <div class="camp-card-name">${c.name}</div>
         ${campStatusBadge(c.status)}
@@ -2810,7 +2876,7 @@ function selectCampaign(id) {
         </div>
         <div style="display:flex;gap:8px;flex-shrink:0">
           ${c.status === 'draft' ? `<button class="btn btn-primary" style="font-size:11px;padding:8px 14px">▶ Gönder</button>` : ''}
-          <button class="btn btn-ghost" style="font-size:11px;padding:8px 14px" onclick="openEditCampaignModal(${c.id})">✎ Düzenle</button>
+          <button class="btn btn-ghost" style="font-size:11px;padding:8px 14px" onclick="openEditCampaignModal('${c.id}')">✎ Düzenle</button>
         </div>
       </div>
 
@@ -2945,7 +3011,7 @@ function renderList() {
 
     return `
     <div class="company-card ${selectedId === c.id ? 'selected' : ''}"
-         onclick="selectCompany(${c.id})"
+         onclick="selectCompany('${c.id}')"
          style="animation-delay:${delay}s">
       <div class="company-avatar" style="background:${color}">${getInitials(c.name)}</div>
       <div class="company-info">
@@ -3025,8 +3091,8 @@ function renderCompanyDetail(id) {
       <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px">
         <div class="detail-avatar" style="background:${color}">${getInitials(co.name)}</div>
         <div style="display:flex;gap:6px">
-          <button type="button" class="btn btn-ghost" style="font-size:11px;padding:7px 12px" onclick="openEditCompanyModal(${co.id})">✎ Düzenle</button>
-          <button type="button" class="btn btn-ghost" style="font-size:11px;padding:7px 12px;color:var(--red)" onclick="confirmDeleteCompany(${co.id})">🗑</button>
+          <button type="button" class="btn btn-ghost" style="font-size:11px;padding:7px 12px" onclick="openEditCompanyModal('${co.id}')">✎ Düzenle</button>
+          <button type="button" class="btn btn-ghost" style="font-size:11px;padding:7px 12px;color:var(--red)" onclick="confirmDeleteCompany('${co.id}')">🗑</button>
         </div>
       </div>
       <div class="detail-name">${co.name}</div>
