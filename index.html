@@ -1751,6 +1751,55 @@
         </div>
       </div>
     </div>
+
+    <!-- MODAL: Kampanya Düzenle -->
+    <div class="modal-overlay" id="editCampModal" onclick="if(event.target===this)closeEditCampModal()">
+      <div class="modal">
+        <div class="modal-title">
+          Kampanyayı Düzenle
+          <button class="modal-close" onclick="closeEditCampModal()">✕</button>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Kampanya Adı *</label>
+          <input class="form-input" id="ec-camp-name" placeholder="Kampanya adı">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Mail Konusu</label>
+          <input class="form-input" id="ec-camp-subject" placeholder="Mail konusu">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Mail İçeriği</label>
+          <textarea class="form-textarea" id="ec-camp-body" placeholder="Mail içeriği..."></textarea>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Durum</label>
+            <select class="form-select" id="ec-camp-status">
+              <option value="draft">Taslak</option>
+              <option value="scheduled">Planlandı</option>
+              <option value="sent">Gönderildi</option>
+              <option value="completed">Tamamlandı</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Hedef Segment</label>
+            <select class="form-select" id="ec-camp-segment">
+              <option value="all">Tüm Şirketler</option>
+              <option value="positive">Olumlu Dönüşler</option>
+              <option value="none">Dönüş Vermeyenler</option>
+              <option value="clean">Temiz Veri</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-actions" style="justify-content:space-between">
+          <button type="button" class="btn btn-ghost" style="color:var(--red)" onclick="deleteCampaign()">🗑 Sil</button>
+          <div style="display:flex;gap:8px">
+            <button type="button" class="btn btn-ghost" onclick="closeEditCampModal()">İptal</button>
+            <button type="button" class="btn btn-primary" onclick="saveEditCampaign()">Kaydet</button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div><!-- /main -->
 </div>
 
@@ -2761,7 +2810,7 @@ function selectCampaign(id) {
         </div>
         <div style="display:flex;gap:8px;flex-shrink:0">
           ${c.status === 'draft' ? `<button class="btn btn-primary" style="font-size:11px;padding:8px 14px">▶ Gönder</button>` : ''}
-          <button class="btn btn-ghost" style="font-size:11px;padding:8px 14px">✎ Düzenle</button>
+          <button class="btn btn-ghost" style="font-size:11px;padding:8px 14px" onclick="openEditCampaignModal(${c.id})">✎ Düzenle</button>
         </div>
       </div>
 
@@ -3108,6 +3157,56 @@ function deleteCompanyById(id) {
     </div>`;
 }
 
+
+// ── EDIT CAMPAIGN ──
+function openEditCampaignModal(id) {
+  const camp = campaigns.find(x => x.id === id);
+  if (!camp) return;
+  selectedCampId = id;
+  document.getElementById('ec-camp-name').value    = camp.name;
+  document.getElementById('ec-camp-subject').value = camp.subject || '';
+  document.getElementById('ec-camp-body').value    = camp.body    || '';
+  document.getElementById('ec-camp-status').value  = camp.status  || 'draft';
+  document.getElementById('ec-camp-segment').value = camp.segment || 'all';
+  document.getElementById('editCampModal').classList.add('open');
+}
+
+function closeEditCampModal() {
+  document.getElementById('editCampModal').classList.remove('open');
+}
+
+function saveEditCampaign() {
+  const name = document.getElementById('ec-camp-name').value.trim();
+  if (!name) { document.getElementById('ec-camp-name').focus(); return; }
+  const camp = campaigns.find(x => x.id === selectedCampId);
+  if (!camp) return;
+  camp.name    = name;
+  camp.subject = document.getElementById('ec-camp-subject').value.trim();
+  camp.body    = document.getElementById('ec-camp-body').value.trim();
+  camp.status  = document.getElementById('ec-camp-status').value;
+  camp.segment = document.getElementById('ec-camp-segment').value;
+  saveToStorage();
+  closeEditCampModal();
+  renderCampList();
+  selectCampaign(selectedCampId);
+}
+
+function deleteCampaign() {
+  const camp = campaigns.find(x => x.id === selectedCampId);
+  if (!camp) return;
+  if (!confirm(camp.name + ' silinsin mi?')) return;
+  const idx = campaigns.findIndex(x => x.id === selectedCampId);
+  campaigns.splice(idx, 1);
+  saveToStorage();
+  closeEditCampModal();
+  selectedCampId = null;
+  renderCampList();
+  document.getElementById('campDetailCol').innerHTML = `
+    <div class="camp-detail-empty">
+      <div style="font-size:40px;opacity:.3">📣</div>
+      <div style="font-size:12px">Detay için kampanya seç</div>
+    </div>`;
+}
 // ── DASHBOARD ──
 function renderDashboard() {
   const total    = companies.length;
