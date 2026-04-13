@@ -3105,52 +3105,223 @@ function renderSourceTable() {
 }
 
 
-// ── LOCAL STORAGE ──
-const LS_KEYS = {
-  companies: 'harman_companies',
-  campaigns: 'harman_campaigns',
-  files:     'harman_files',
-  sources:   'harman_sources',
-  dupes:     'harman_duplicates',
-  auth:      'harman_auth',
+// ── SUPABASE ──
+const SUPA_URL = 'https://szqoldtcinbqjgfyptmq.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN6cW9sZHRjaW5icWpnZnlwdG1xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwNjg4MzksImV4cCI6MjA5MTY0NDgzOX0.vR81__CCC7PdiAA4an1y0xxcCDQUUjOaI5CRx8yaPfI';
+
+const supa = {
+  async from(table) {
+    const base = `${SUPA_URL}/rest/v1/${table}`;
+    const headers = {
+      'apikey': SUPA_KEY,
+      'Authorization': `Bearer ${SUPA_KEY}`,
+      'Content-Type': 'application/json',
+      'Prefer': 'return=minimal',
+    };
+    return {
+      async select(cols = '*') {
+        const res = await fetch(`${base}?select=${cols}`, { headers });
+        return res.ok ? await res.json() : [];
+      },
+      async upsert(rows) {
+        const data = Array.isArray(rows) ? rows : [rows];
+        await fetch(base, {
+          method: 'POST',
+          headers: { ...headers, 'Prefer': 'resolution=merge-duplicates,return=minimal' },
+          body: JSON.stringify(data),
+        });
+      },
+      async delete(match) {
+        const params = Object.entries(match).map(([k,v]) => `${k}=eq.${v}`).join('&');
+        await fetch(`${base}?${params}`, { method: 'DELETE', headers });
+      },
+    };
+  }
 };
 
-function saveToStorage() {
+// Supabase'de tablolar hazır mı kontrol et, değilse localStorage'a fallback yap
+let useSupabase = false;
+
+async function checkSupabase() {
   try {
-    localStorage.setItem(LS_KEYS.companies, JSON.stringify(companies));
-    localStorage.setItem(LS_KEYS.campaigns, JSON.stringify(campaigns));
-    localStorage.setItem(LS_KEYS.files,     JSON.stringify(filesData));
-    localStorage.setItem(LS_KEYS.sources,   JSON.stringify(sourcesData));
-    localStorage.setItem(LS_KEYS.dupes,     JSON.stringify(duplicatesData));
-    localStorage.setItem(LS_KEYS.auth,      JSON.stringify(currentUser));
-  } catch(e) { console.warn('Storage write failed', e); }
+    const res = await fetch(`${SUPA_URL}/rest/v1/companies?select=id&limit=1`, {
+      headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}` }
+    });
+    useSupabase = res.ok;
+  } catch(e) { useSupabase = false; }
+  return useSupabase;
 }
 
-function loadFromStorage() {
+// ── STORAGE (Supabase + localStorage fallback) ──
+async function saveToStorage() {
+  if (useSupabase) {
+    try {
+      // companies
+      const dbCompanies = companies.map(co => ({
+        id:           String(co.id),
+        name:         co.name,
+        domain:       co.domain || null,
+        sector:       co.sector || null,
+        city:         co.city   || null,
+        data_quality: co.quality  || 'incomplete',
+        status:       co.response === 'positive' ? 'active' : 'active',
+        notes:        JSON.stringify({ response: co.response, contacts: co.contacts, sources: co.sources, history: co.history }),
+      }));
+      const db = await supa.from('companies');
+      await db.upsert(dbCompanies);
+
+      // campaigns
+      const dbCampaigns = campaigns.map(ca => ({
+        id:      String(ca.id),
+        name:    ca.name,
+        subject: ca.subject || null,
+        body:    ca.body    || null,
+        status:  ca.status  || 'draft',
+        notes:   JSON.stringify({ segment: ca.segment, sentAt: ca.sentAt, sends: ca.sends }),
+      }));
+      const dbC = await supa.from('campaigns');
+      await dbC.upsert(dbCampaigns);
+
+      // assets (files)
+      const dbAssets = filesData.map(f => ({
+        id:          String(f.id),
+        name:        f.name,
+        file_url:    f.name,
+        file_type:   ['pptx','psd','pdf'].includes(f.type) ? f.type : 'other',
+        year:        f.year || null,
+        tags:        f.tags || [],
+        description: JSON.stringify({ size: f.size, uploadedAt: f.uploadedAt }),
+      }));
+      const dbA = await supa.from('assets');
+      await dbA.upsert(dbAssets);
+
+    } catch(e) {
+      console.warn('Supabase write failed, falling back to localStorage', e);
+      saveToLocalStorage();
+    }
+  } else {
+    saveToLocalStorage();
+  }
+}
+
+function saveToLocalStorage() {
   try {
-    const co = localStorage.getItem(LS_KEYS.companies);
+    localStorage.setItem('harman_companies',  JSON.stringify(companies));
+    localStorage.setItem('harman_campaigns',  JSON.stringify(campaigns));
+    localStorage.setItem('harman_files',      JSON.stringify(filesData));
+    localStorage.setItem('harman_sources',    JSON.stringify(sourcesData));
+    localStorage.setItem('harman_duplicates', JSON.stringify(duplicatesData));
+    localStorage.setItem('harman_auth',       JSON.stringify(currentUser));
+  } catch(e) { console.warn('localStorage write failed', e); }
+}
+
+async function loadFromStorage() {
+  const supaOk = await checkSupabase();
+
+  if (supaOk) {
+    try {
+      // companies
+      const db = await supa.from('companies');
+      const rows = await db.select('*');
+      if (rows.length) {
+        companies.length = 0;
+        rows.forEach(r => {
+          const extra = (() => { try { return JSON.parse(r.notes||'{}'); } catch(e) { return {}; } })();
+          companies.push({
+            id:       r.id,
+            name:     r.name,
+            domain:   r.domain   || '',
+            sector:   r.sector   || '',
+            city:     r.city     || '',
+            quality:  r.data_quality || 'incomplete',
+            response: extra.response  || 'none',
+            contacts: extra.contacts  || [],
+            sources:  extra.sources   || [],
+            history:  extra.history   || [],
+          });
+        });
+      }
+
+      // campaigns
+      const dbC = await supa.from('campaigns');
+      const campRows = await dbC.select('*');
+      if (campRows.length) {
+        campaigns.length = 0;
+        campRows.forEach(r => {
+          const extra = (() => { try { return JSON.parse(r.notes||'{}'); } catch(e) { return {}; } })();
+          campaigns.push({
+            id:      r.id,
+            name:    r.name,
+            subject: r.subject || '',
+            body:    r.body    || '',
+            status:  r.status  || 'draft',
+            segment: extra.segment || 'all',
+            sentAt:  extra.sentAt  || null,
+            sends:   extra.sends   || [],
+          });
+        });
+      }
+
+      // assets
+      const dbA = await supa.from('assets');
+      const assetRows = await dbA.select('*');
+      if (assetRows.length) {
+        filesData.length = 0;
+        assetRows.forEach(r => {
+          const extra = (() => { try { return JSON.parse(r.description||'{}'); } catch(e) { return {}; } })();
+          filesData.push({
+            id:         r.id,
+            name:       r.name,
+            type:       r.file_type || 'other',
+            year:       r.year || new Date().getFullYear(),
+            size:       extra.size || '—',
+            tags:       r.tags || [],
+            uploadedAt: extra.uploadedAt || '—',
+          });
+        });
+      }
+
+      showToast('✓ Supabase bağlantısı kuruldu');
+      return;
+    } catch(e) {
+      console.warn('Supabase read failed, falling back', e);
+    }
+  }
+
+  // localStorage fallback
+  try {
+    const co = localStorage.getItem('harman_companies');
     if (co) { companies.length = 0; JSON.parse(co).forEach(x => companies.push(x)); }
-
-    const ca = localStorage.getItem(LS_KEYS.campaigns);
+    const ca = localStorage.getItem('harman_campaigns');
     if (ca) { campaigns.length = 0; JSON.parse(ca).forEach(x => campaigns.push(x)); }
-
-    const fi = localStorage.getItem(LS_KEYS.files);
+    const fi = localStorage.getItem('harman_files');
     if (fi) { filesData.length = 0; JSON.parse(fi).forEach(x => filesData.push(x)); }
-
-    const so = localStorage.getItem(LS_KEYS.sources);
+    const so = localStorage.getItem('harman_sources');
     if (so) { sourcesData.length = 0; JSON.parse(so).forEach(x => sourcesData.push(x)); }
-
-    const du = localStorage.getItem(LS_KEYS.dupes);
+    const du = localStorage.getItem('harman_duplicates');
     if (du) { duplicatesData.length = 0; JSON.parse(du).forEach(x => duplicatesData.push(x)); }
+    const au = localStorage.getItem('harman_auth');
+    if (au) { const p = JSON.parse(au); currentUser.username = p.username; currentUser.password = p.password; }
+  } catch(e) { console.warn('localStorage read failed', e); }
+}
 
-    const au = localStorage.getItem(LS_KEYS.auth);
-    if (au) { const parsed = JSON.parse(au); currentUser.username = parsed.username; currentUser.password = parsed.password; }
-  } catch(e) { console.warn('Storage read failed', e); }
+// ── TOAST ──
+function showToast(msg) {
+  let t = document.getElementById('toastEl');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'toastEl';
+    t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#242424;border:1px solid rgba(255,255,255,0.1);color:#efefef;font-family:DM Mono,monospace;font-size:12px;padding:10px 20px;border-radius:9px;z-index:9999;opacity:0;transition:opacity .2s;pointer-events:none';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.style.opacity = '1';
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.style.opacity = '0', 2500);
 }
 
 // ── INIT ──
-loadFromStorage();
-renderList();
+loadFromStorage().then(() => renderList());
 </script>
 </body>
 </html>
