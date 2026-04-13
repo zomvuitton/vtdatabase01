@@ -1586,14 +1586,54 @@
       <div style="flex:1;overflow-y:auto;padding:28px;scrollbar-width:thin;scrollbar-color:var(--surface3) transparent">
         <div style="max-width:600px;display:flex;flex-direction:column;gap:20px">
 
+          <!-- Supabase Durumu -->
+          <div class="dash-card">
+            <div class="dash-card-title" style="margin-bottom:16px">Veritabanı Bağlantısı</div>
+            <div style="display:flex;align-items:center;gap:14px;padding:14px;background:var(--surface2);border-radius:10px;margin-bottom:12px">
+              <div id="supaStatusDot" style="width:10px;height:10px;border-radius:50%;background:var(--muted);flex-shrink:0;transition:background .3s"></div>
+              <div style="flex:1">
+                <div id="supaStatusText" style="font-size:12px;color:var(--text)">Kontrol ediliyor...</div>
+                <div id="supaStatusSub" style="font-size:10.5px;color:var(--muted);margin-top:2px">szqoldtcinbqjgfyptmq.supabase.co</div>
+              </div>
+              <button type="button" class="btn btn-ghost" style="font-size:11px;padding:6px 12px" onclick="recheckSupabase()">↺ Test Et</button>
+            </div>
+            <div id="supaTableStatus" style="display:flex;flex-direction:column;gap:6px"></div>
+          </div>
+
+          <!-- Kullanıcılar -->
+          <div class="dash-card">
+            <div class="dash-card-title" style="margin-bottom:16px">Kullanıcılar</div>
+            <div id="usersList" style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px"></div>
+            <div style="border-top:1px solid var(--border);padding-top:14px">
+              <div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:10px">Yeni Kullanıcı Ekle</div>
+              <div class="form-row" style="margin-bottom:8px">
+                <div class="form-group" style="margin-bottom:0">
+                  <input class="form-input" id="new-user-name" placeholder="Kullanıcı adı" onkeydown="if(event.key==='Enter')document.getElementById('new-user-pass').focus()">
+                </div>
+                <div class="form-group" style="margin-bottom:0">
+                  <input class="form-input" id="new-user-pass" type="password" placeholder="Şifre" onkeydown="if(event.key==='Enter')addUser()">
+                </div>
+              </div>
+              <div class="form-group" style="margin-bottom:8px">
+                <select class="form-select" id="new-user-role">
+                  <option value="admin">Yönetici</option>
+                  <option value="editor">Editör</option>
+                  <option value="viewer">Görüntüleyici</option>
+                </select>
+              </div>
+              <button type="button" class="btn btn-primary" style="width:100%;justify-content:center" onclick="addUser()">+ Kullanıcı Ekle</button>
+              <div id="userAddMsg" style="font-size:11px;color:var(--muted2);margin-top:8px;min-height:14px;text-align:center"></div>
+            </div>
+          </div>
+
           <!-- Profil -->
           <div class="dash-card">
-            <div class="dash-card-title" style="margin-bottom:18px">Hesap</div>
+            <div class="dash-card-title" style="margin-bottom:18px">Hesabım</div>
             <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px">
-              <div style="width:52px;height:52px;border-radius:14px;background:var(--surface3);display:flex;align-items:center;justify-content:center;font-family:var(--font-head);font-size:20px;font-weight:700;color:var(--text)">H</div>
+              <div id="settingsAvatar" style="width:52px;height:52px;border-radius:14px;background:var(--surface3);display:flex;align-items:center;justify-content:center;font-family:var(--font-head);font-size:20px;font-weight:700;color:var(--text)">H</div>
               <div>
                 <div style="font-family:var(--font-head);font-size:15px;font-weight:700" id="settingsUsername">harman</div>
-                <div style="font-size:11px;color:var(--muted)">Yönetici</div>
+                <div style="font-size:11px;color:var(--muted)" id="settingsRole">Yönetici</div>
               </div>
             </div>
             <div class="form-row">
@@ -1629,32 +1669,26 @@
                   <div style="font-size:12px;color:var(--text)">Otomatik Duplicate Tespiti</div>
                   <div style="font-size:10.5px;color:var(--muted)">Yeni şirket eklendiğinde çalışır</div>
                 </div>
-                <div class="toggle-wrap" onclick="toggleSetting(this)" data-on="true">
-                  <div class="toggle-knob"></div>
-                </div>
+                <div class="toggle-wrap" onclick="toggleSetting(this)" data-on="true"><div class="toggle-knob"></div></div>
               </div>
               <div style="display:flex;align-items:center;justify-content:space-between;padding:12px;background:var(--surface2);border-radius:9px">
                 <div>
                   <div style="font-size:12px;color:var(--text)">Mail Gönderim Bildirimleri</div>
                   <div style="font-size:10.5px;color:var(--muted)">Kampanya tamamlandığında bildir</div>
                 </div>
-                <div class="toggle-wrap" onclick="toggleSetting(this)" data-on="false">
-                  <div class="toggle-knob"></div>
-                </div>
+                <div class="toggle-wrap" onclick="toggleSetting(this)" data-on="false"><div class="toggle-knob"></div></div>
               </div>
               <div style="display:flex;align-items:center;justify-content:space-between;padding:12px;background:var(--surface2);border-radius:9px">
                 <div>
                   <div style="font-size:12px;color:var(--text)">Kirli Veri Uyarıları</div>
                   <div style="font-size:10.5px;color:var(--muted)">Import sırasında uyar</div>
                 </div>
-                <div class="toggle-wrap" onclick="toggleSetting(this)" data-on="true">
-                  <div class="toggle-knob"></div>
-                </div>
+                <div class="toggle-wrap" onclick="toggleSetting(this)" data-on="true"><div class="toggle-knob"></div></div>
               </div>
             </div>
           </div>
 
-          <!-- Tehlike bölgesi -->
+          <!-- Oturum -->
           <div class="dash-card" style="border-color:rgba(255,255,255,0.06)">
             <div class="dash-card-title" style="margin-bottom:16px">Oturum</div>
             <button class="btn btn-ghost" style="width:100%;justify-content:center" onclick="doLogout()">⏻ Çıkış Yap</button>
@@ -1750,11 +1784,125 @@ function doLogout() {
 // ── SETTINGS ──
 let sourcesData = ['LinkedIn','Kaynak Panel A','Kaynak Panel B','Kaynak Panel C','Kaynak Panel D','Manuel Giriş'];
 
+// ── USERS ──
+let usersData = [
+  { username: 'harman', password: 'databasedemo', role: 'admin' }
+];
+
 function renderSettings() {
   document.getElementById('set-username').value = currentUser.username;
   document.getElementById('set-password').value = '';
   document.getElementById('settingsUsername').textContent = currentUser.username;
+  document.getElementById('settingsAvatar').textContent   = currentUser.username[0].toUpperCase();
+  const roleLabels = { admin:'Yönetici', editor:'Editör', viewer:'Görüntüleyici' };
+  document.getElementById('settingsRole').textContent = roleLabels[currentUser.role || 'admin'];
+  renderUsersList();
   renderSourcesList();
+  renderSupabaseStatus();
+}
+
+function renderUsersList() {
+  const el = document.getElementById('usersList');
+  if (!el) return;
+  const roleLabels = { admin:'Yönetici', editor:'Editör', viewer:'Görüntüleyici' };
+  el.innerHTML = usersData.map((u, i) => `
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 13px;background:var(--surface2);border-radius:9px">
+      <div style="width:30px;height:30px;border-radius:8px;background:var(--surface3);display:flex;align-items:center;justify-content:center;font-family:var(--font-head);font-size:12px;font-weight:700;flex-shrink:0">${u.username[0].toUpperCase()}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;color:var(--text)">${u.username}</div>
+        <div style="font-size:10.5px;color:var(--muted)">${roleLabels[u.role]||u.role}</div>
+      </div>
+      ${u.username === currentUser.username
+        ? '<span class="badge badge-muted" style="font-size:10px">Aktif</span>'
+        : `<button onclick="removeUser(${i})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;padding:0 4px" title="Sil">✕</button>`
+      }
+    </div>`).join('');
+}
+
+function addUser() {
+  const name = document.getElementById('new-user-name').value.trim();
+  const pass = document.getElementById('new-user-pass').value.trim();
+  const role = document.getElementById('new-user-role').value;
+  const msg  = document.getElementById('userAddMsg');
+  if (!name) { document.getElementById('new-user-name').focus(); return; }
+  if (!pass) { document.getElementById('new-user-pass').focus(); return; }
+  if (usersData.find(u => u.username === name)) {
+    msg.textContent = 'Bu kullanıcı adı zaten var.';
+    setTimeout(() => msg.textContent = '', 2000);
+    return;
+  }
+  usersData.push({ username: name, password: pass, role });
+  document.getElementById('new-user-name').value = '';
+  document.getElementById('new-user-pass').value = '';
+  renderUsersList();
+  msg.textContent = '✓ Kullanıcı eklendi';
+  setTimeout(() => msg.textContent = '', 2000);
+}
+
+function removeUser(i) {
+  if (usersData[i].username === currentUser.username) return;
+  usersData.splice(i, 1);
+  renderUsersList();
+}
+
+// ── SUPABASE STATUS ──
+async function renderSupabaseStatus() {
+  const dot  = document.getElementById('supaStatusDot');
+  const text = document.getElementById('supaStatusText');
+  const sub  = document.getElementById('supaStatusSub');
+  const tbl  = document.getElementById('supaTableStatus');
+  if (!dot) return;
+
+  dot.style.background  = '#555';
+  text.textContent      = 'Bağlantı kontrol ediliyor...';
+
+  const tables = ['companies','campaigns','assets','contacts','sources','duplicates'];
+  const results = [];
+
+  try {
+    const res = await fetch(`${SUPA_URL}/rest/v1/companies?select=id&limit=1`, {
+      headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}` }
+    });
+
+    if (res.ok) {
+      useSupabase = true;
+      dot.style.background = '#c8c8c8';
+      text.textContent     = 'Bağlantı aktif';
+      sub.textContent      = 'szqoldtcinbqjgfyptmq.supabase.co';
+
+      // check each table
+      for (const t of tables) {
+        const r = await fetch(`${SUPA_URL}/rest/v1/${t}?select=count`, {
+          headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}`, 'Prefer': 'count=exact' }
+        });
+        const count = r.ok ? (r.headers.get('content-range') || '').split('/')[1] || '0' : null;
+        results.push({ table: t, ok: r.ok, count });
+      }
+    } else {
+      throw new Error('HTTP ' + res.status);
+    }
+  } catch(e) {
+    useSupabase = false;
+    dot.style.background = '#606060';
+    text.textContent     = 'Bağlantı kurulamadı';
+    sub.textContent      = e.message || 'Tablolar oluşturulmamış olabilir';
+    tbl.innerHTML = `<div style="font-size:11px;color:var(--muted);padding:8px 0">migration.sql dosyasını SQL Editor'de çalıştırın.</div>`;
+    return;
+  }
+
+  tbl.innerHTML = results.map(r => `
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--surface2);border-radius:8px">
+      <span style="font-size:11px;color:${r.ok ? 'var(--text)' : 'var(--muted)'};flex:1">${r.table}</span>
+      ${r.ok
+        ? `<span style="font-size:10px;color:var(--muted)">${r.count} kayıt</span><span style="font-size:12px">✓</span>`
+        : `<span style="font-size:10px;color:var(--red)">Tablo bulunamadı</span><span style="font-size:12px">✕</span>`
+      }
+    </div>`).join('');
+}
+
+async function recheckSupabase() {
+  await renderSupabaseStatus();
+  showToast('Bağlantı tekrar kontrol edildi');
 }
 
 function saveCredentials() {
