@@ -1560,6 +1560,7 @@
         <div class="topbar-title">Duplicate'ler</div>
         <div style="margin-left:auto;display:flex;gap:10px;align-items:center">
           <span style="font-size:12px;color:var(--muted)" id="dupCount"></span>
+          <button class="btn btn-ghost" onclick="scanDuplicates()">🔍 Tara</button>
           <button class="btn btn-ghost" onclick="autoMergeAll()">⚡ Tümünü Birleştir</button>
         </div>
       </div>
@@ -2302,7 +2303,7 @@ function renderDuplicates() {
   el.innerHTML = list.map(d => {
     const scoreColor = d.score >= 90 ? 'var(--text)' : d.score >= 75 ? 'var(--muted2)' : 'var(--muted)';
     return `
-    <div class="company-card ${selectedDupId===d.id?'selected':''}" onclick="selectDup(${d.id})" style="margin-bottom:8px">
+    <div class="company-card ${selectedDupId===d.id?'selected':''}" onclick="selectDup('${d.id}')" style="margin-bottom:8px">
       <div style="flex:1;min-width:0">
         <div style="font-family:var(--font-head);font-size:13px;font-weight:600;margin-bottom:6px;display:flex;align-items:center;gap:8px">
           ${d.resolved ? '<span style="font-size:10px;color:var(--muted)">[Çözüldü]</span>' : ''}
@@ -2354,11 +2355,11 @@ function selectDup(id) {
 
       ${d.resolved ? `
         <div style="text-align:center;color:var(--muted);font-size:12px;padding:12px 0">Bu duplicate çözümlendi</div>
-        <button class="btn btn-ghost" style="width:100%" onclick="unresolve(${d.id})">Geri Al</button>
+        <button class="btn btn-ghost" style="width:100%" onclick="unresolve('${d.id}')">Geri Al</button>
       ` : `
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-          <button class="btn btn-primary" onclick="mergeDup(${d.id})">✓ Birleştir</button>
-          <button class="btn btn-ghost" onclick="dismissDup(${d.id})">✕ Reddet</button>
+          <button class="btn btn-primary" onclick="mergeDup('${d.id}')">✓ Birleştir</button>
+          <button class="btn btn-ghost" onclick="dismissDup('${d.id}')">✕ Reddet</button>
         </div>
       `}
     </div>`;
@@ -2387,6 +2388,75 @@ function unresolve(id) {
   saveToStorage();
   renderDuplicates();
   selectDup(id);
+}
+
+
+function scanDuplicates() {
+  const newDupes = [];
+  const seen = new Set(duplicatesData.map(d => [d.masterId, d.dupId].sort().join('|')));
+
+  for (let i = 0; i < companies.length; i++) {
+    for (let j = i + 1; j < companies.length; j++) {
+      const a = companies[i];
+      const b = companies[j];
+      const pairKey = [String(a.id), String(b.id)].sort().join('|');
+      if (seen.has(pairKey)) continue;
+
+      let reason = null;
+      let score  = 0;
+
+      // 1. Same domain
+      if (a.domain && b.domain && a.domain.trim() !== '' &&
+          a.domain.toLowerCase() === b.domain.toLowerCase()) {
+        reason = 'same_domain'; score = 100;
+      }
+      // 2. Same email
+      if (!reason) {
+        const aEmails = a.contacts.filter(ct => ct.type === 'email').map(ct => ct.value.toLowerCase());
+        const bEmails = b.contacts.filter(ct => ct.type === 'email').map(ct => ct.value.toLowerCase());
+        const shared  = aEmails.filter(e => bEmails.includes(e));
+        if (shared.length) { reason = 'same_email'; score = 95; }
+      }
+      // 3. Fuzzy name match (simple: normalized contains or high overlap)
+      if (!reason) {
+        const norm = s => s.toLowerCase().replace(/[^a-z0-9ığüşöçA-ZİĞÜŞÖÇ\s]/g, '').trim();
+        const na = norm(a.name);
+        const nb = norm(b.name);
+        if (na === nb) { reason = 'fuzzy_name'; score = 99; }
+        else {
+          // Dice coefficient on bigrams
+          const bigrams = s => { const bg = new Set(); for(let k=0;k<s.length-1;k++) bg.add(s[k]+s[k+1]); return bg; };
+          const ba = bigrams(na), bb = bigrams(nb);
+          const inter = [...ba].filter(x => bb.has(x)).length;
+          const dice  = (2 * inter) / (ba.size + bb.size);
+          if (dice > 0.72) { reason = 'fuzzy_name'; score = Math.round(dice * 100); }
+        }
+      }
+
+      if (reason) {
+        seen.add(pairKey);
+        newDupes.push({
+          id:         Date.now() + Math.random(),
+          masterId:   a.id,
+          dupId:      b.id,
+          masterName: a.name,
+          dupName:    b.name,
+          reason,
+          score,
+          resolved:   false,
+        });
+      }
+    }
+  }
+
+  if (newDupes.length === 0) {
+    showToast('Yeni duplicate bulunamadı');
+  } else {
+    newDupes.forEach(d => duplicatesData.push(d));
+    saveToStorage();
+    showToast('✓ ' + newDupes.length + ' yeni duplicate bulundu');
+  }
+  renderDuplicates();
 }
 
 function autoMergeAll() {
@@ -2588,7 +2658,7 @@ function renderFiles() {
     const emoji = fileTypeEmoji[f.type] || '📁';
     const tagsHTML = f.tags.map(t => `<span class="file-tag">${t}</span>`).join('');
     return `
-    <div class="file-card" onclick="openFileModal(${f.id})">
+    <div class="file-card" onclick="openFileModal('${f.id}')">
       <div class="file-thumb">
         ${emoji}
         <span class="file-type-badge">${f.type.toUpperCase()}</span>
