@@ -1867,7 +1867,12 @@ function doLogin() {
   const u = document.getElementById('loginUser').value.trim();
   const p = document.getElementById('loginPass').value;
   const err = document.getElementById('loginError');
-  if (u === currentUser.username && p === currentUser.password) {
+  // Check against full usersData list
+  const found = usersData.find(x => x.username === u && x.password === p);
+  if (found) {
+    currentUser.username = found.username;
+    currentUser.password = found.password;
+    currentUser.role     = found.role || 'admin';
     document.getElementById('loginScreen').style.display = 'none';
     err.textContent = '';
   } else {
