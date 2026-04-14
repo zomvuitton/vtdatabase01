@@ -1936,6 +1936,7 @@ function addUser() {
     return;
   }
   usersData.push({ username: name, password: pass, role });
+  saveToStorage();
   document.getElementById('new-user-name').value = '';
   document.getElementById('new-user-pass').value = '';
   renderUsersList();
@@ -1946,6 +1947,7 @@ function addUser() {
 function removeUser(i) {
   if (usersData[i].username === currentUser.username) return;
   usersData.splice(i, 1);
+  saveToStorage();
   renderUsersList();
 }
 
