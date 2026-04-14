@@ -1479,11 +1479,20 @@
           <div class="filter-chip" onclick="setFileFilter('pdf',this)" style="font-size:11px;padding:4px 11px">PDF</div>
           <div class="filter-chip" onclick="setFileFilter('other',this)" style="font-size:11px;padding:4px 11px">Diğer</div>
           <div style="width:1px;height:20px;background:var(--border);flex-shrink:0"></div>
-          <div class="filter-chip" onclick="setFileYear('all',this)" id="fyear-all" style="font-size:11px;padding:4px 11px">Tüm Yıllar</div>
-          <div class="filter-chip" onclick="setFileYear('2025',this)" style="font-size:11px;padding:4px 11px">2025</div>
-          <div class="filter-chip" onclick="setFileYear('2024',this)" style="font-size:11px;padding:4px 11px">2024</div>
-          <div class="filter-chip" onclick="setFileYear('2023',this)" style="font-size:11px;padding:4px 11px">2023</div>
-          <div class="filter-chip" onclick="setFileYear('2022',this)" style="font-size:11px;padding:4px 11px">2022</div>
+          <select id="yearSelect" onchange="setFileYearSelect(this.value)"
+            style="background:var(--surface2);border:1px solid var(--border);border-radius:20px;color:var(--muted2);font-family:var(--font-mono);font-size:11px;padding:5px 14px;outline:none;cursor:pointer;height:30px">
+            <option value="all">Tüm Yıllar</option>
+              <option value="2025">2025</option>
+              <option value="2024">2024</option>
+              <option value="2023">2023</option>
+              <option value="2022">2022</option>
+              <option value="2021">2021</option>
+              <option value="2020">2020</option>
+              <option value="2019">2019</option>
+              <option value="2018">2018</option>
+              <option value="2017">2017</option>
+              <option value="2016">2016</option>
+          </select>
         </div>
 
         <div class="files-grid" id="filesGrid"
@@ -3579,7 +3588,10 @@ async function saveToStorage() {
     } catch(e) {
       console.warn('Supabase write failed, falling back to localStorage', e);
       saveToLocalStorage();
+      return;
     }
+    // Always save non-Supabase data locally
+    saveLocalOnly();
   } else {
     saveToLocalStorage();
   }
@@ -3594,6 +3606,29 @@ function saveToLocalStorage() {
     localStorage.setItem('harman_duplicates', JSON.stringify(duplicatesData));
     localStorage.setItem('harman_auth',       JSON.stringify(currentUser));
   } catch(e) { console.warn('localStorage write failed', e); }
+}
+
+// Always persist these to localStorage regardless of Supabase status
+function saveLocalOnly() {
+  try {
+    localStorage.setItem('harman_duplicates', JSON.stringify(duplicatesData));
+    localStorage.setItem('harman_files',      JSON.stringify(filesData));
+    localStorage.setItem('harman_sources',    JSON.stringify(sourcesData));
+    localStorage.setItem('harman_auth',       JSON.stringify(currentUser));
+  } catch(e) {}
+}
+
+function loadLocalOnlyData() {
+  try {
+    const du = localStorage.getItem('harman_duplicates');
+    if (du) { duplicatesData.length = 0; JSON.parse(du).forEach(x => duplicatesData.push(x)); }
+    const fi = localStorage.getItem('harman_files');
+    if (fi) { filesData.length = 0; JSON.parse(fi).forEach(x => filesData.push(x)); }
+    const so = localStorage.getItem('harman_sources');
+    if (so) { sourcesData.length = 0; JSON.parse(so).forEach(x => sourcesData.push(x)); }
+    const au = localStorage.getItem('harman_auth');
+    if (au) { const p = JSON.parse(au); currentUser.username = p.username; currentUser.password = p.password; }
+  } catch(e) {}
 }
 
 async function loadFromStorage() {
@@ -3663,6 +3698,8 @@ async function loadFromStorage() {
       }
 
       showToast('✓ Supabase bağlantısı kuruldu');
+      // Also load local-only data
+      loadLocalOnlyData();
       return;
     } catch(e) {
       console.warn('Supabase read failed, falling back', e);
