@@ -3605,6 +3605,7 @@ function saveToLocalStorage() {
     localStorage.setItem('harman_sources',    JSON.stringify(sourcesData));
     localStorage.setItem('harman_duplicates', JSON.stringify(duplicatesData));
     localStorage.setItem('harman_auth',       JSON.stringify(currentUser));
+    localStorage.setItem('harman_users',      JSON.stringify(usersData));
   } catch(e) { console.warn('localStorage write failed', e); }
 }
 
@@ -3615,6 +3616,7 @@ function saveLocalOnly() {
     localStorage.setItem('harman_files',      JSON.stringify(filesData));
     localStorage.setItem('harman_sources',    JSON.stringify(sourcesData));
     localStorage.setItem('harman_auth',       JSON.stringify(currentUser));
+    localStorage.setItem('harman_users',      JSON.stringify(usersData));
   } catch(e) {}
 }
 
@@ -3628,6 +3630,8 @@ function loadLocalOnlyData() {
     if (so) { sourcesData.length = 0; JSON.parse(so).forEach(x => sourcesData.push(x)); }
     const au = localStorage.getItem('harman_auth');
     if (au) { const p = JSON.parse(au); currentUser.username = p.username; currentUser.password = p.password; }
+    const ud = localStorage.getItem('harman_users');
+    if (ud) { usersData.length = 0; JSON.parse(ud).forEach(x => usersData.push(x)); }
   } catch(e) {}
 }
 
@@ -3720,6 +3724,8 @@ async function loadFromStorage() {
     if (du) { duplicatesData.length = 0; JSON.parse(du).forEach(x => duplicatesData.push(x)); }
     const au = localStorage.getItem('harman_auth');
     if (au) { const p = JSON.parse(au); currentUser.username = p.username; currentUser.password = p.password; }
+    const ud = localStorage.getItem('harman_users');
+    if (ud) { usersData.length = 0; JSON.parse(ud).forEach(x => usersData.push(x)); }
   } catch(e) { console.warn('localStorage read failed', e); }
 }
 
