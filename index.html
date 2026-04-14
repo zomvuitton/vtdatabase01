@@ -2303,7 +2303,7 @@ function renderDuplicates() {
   el.innerHTML = list.map(d => {
     const scoreColor = d.score >= 90 ? 'var(--text)' : d.score >= 75 ? 'var(--muted2)' : 'var(--muted)';
     return `
-    <div class="company-card ${selectedDupId===d.id?'selected':''}" onclick="selectDup('${d.id}')" style="margin-bottom:8px">
+    <div class="company-card ${String(selectedDupId)===String(d.id)?'selected':''}" onclick="selectDup('${d.id}')" style="margin-bottom:8px">
       <div style="flex:1;min-width:0">
         <div style="font-family:var(--font-head);font-size:13px;font-weight:600;margin-bottom:6px;display:flex;align-items:center;gap:8px">
           ${d.resolved ? '<span style="font-size:10px;color:var(--muted)">[Çözüldü]</span>' : ''}
@@ -2320,53 +2320,51 @@ function renderDuplicates() {
 }
 
 function selectDup(id) {
-  selectedDupId = id;
+  selectedDupId = String(id);
   renderDuplicates();
-  const d   = duplicatesData.find(x => x.id === id);
+  const d   = duplicatesData.find(x => String(x.id) === String(id));
+  if (!d) return;
   const det = document.getElementById('dupDetail');
 
-  det.innerHTML = `
-    <div style="padding:20px">
-      <div style="font-family:var(--font-head);font-size:16px;font-weight:700;margin-bottom:4px">Duplicate Analizi</div>
-      <div style="font-size:11px;color:var(--muted);margin-bottom:20px">${reasonLabel[d.reason]} · %${d.score} benzerlik</div>
+  const actionBtns = d.resolved
+    ? '<div style="text-align:center;color:var(--muted);font-size:12px;padding:12px 0">Bu duplicate çözümlendi</div>'
+      + '<button class="btn btn-ghost" style="width:100%" onclick="unresolve(this.dataset.id)" data-id="' + d.id + '">Geri Al</button>'
+    : '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
+      + '<button class="btn btn-primary" onclick="mergeDup(this.dataset.id)" data-id="' + d.id + '">✓ Birleştir</button>'
+      + '<button class="btn btn-ghost" onclick="dismissDup(this.dataset.id)" data-id="' + d.id + '">✕ Reddet</button>'
+      + '</div>';
 
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px">
-        <div style="background:var(--surface2);border-radius:10px;padding:14px;border:1px solid var(--border)">
-          <div style="font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:8px">Asıl Kayıt</div>
-          <div style="font-family:var(--font-head);font-size:13px;font-weight:700;margin-bottom:4px">${d.masterName}</div>
-          <div style="font-size:10.5px;color:var(--muted)">ID #${d.masterId}</div>
-        </div>
-        <div style="background:var(--surface2);border-radius:10px;padding:14px;border:1px solid rgba(255,255,255,0.04)">
-          <div style="font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:8px">Duplicate</div>
-          <div style="font-family:var(--font-head);font-size:13px;font-weight:700;margin-bottom:4px">${d.dupName}</div>
-          <div style="font-size:10.5px;color:var(--muted)">ID #${d.dupId}</div>
-        </div>
-      </div>
-
-      <div style="background:var(--surface2);border-radius:10px;padding:14px;margin-bottom:20px">
-        <div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:10px">Eşleşme Skoru</div>
-        <div style="display:flex;align-items:center;gap:10px">
-          <div style="flex:1;height:8px;background:var(--surface3);border-radius:4px;overflow:hidden">
-            <div style="height:100%;width:${d.score}%;background:var(--accent);border-radius:4px;transition:width .4s"></div>
-          </div>
-          <span style="font-family:var(--font-head);font-size:16px;font-weight:700">%${d.score}</span>
-        </div>
-      </div>
-
-      ${d.resolved ? `
-        <div style="text-align:center;color:var(--muted);font-size:12px;padding:12px 0">Bu duplicate çözümlendi</div>
-        <button class="btn btn-ghost" style="width:100%" onclick="unresolve('${d.id}')">Geri Al</button>
-      ` : `
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-          <button class="btn btn-primary" onclick="mergeDup('${d.id}')">✓ Birleştir</button>
-          <button class="btn btn-ghost" onclick="dismissDup('${d.id}')">✕ Reddet</button>
-        </div>
-      `}
-    </div>`;
+  det.innerHTML =
+    '<div style="padding:20px">'
+    + '<div style="font-family:var(--font-head);font-size:16px;font-weight:700;margin-bottom:4px">Duplicate Analizi</div>'
+    + '<div style="font-size:11px;color:var(--muted);margin-bottom:20px">' + (reasonLabel[d.reason]||d.reason) + ' · %' + d.score + ' benzerlik</div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px">'
+      + '<div style="background:var(--surface2);border-radius:10px;padding:14px;border:1px solid var(--border)">'
+        + '<div style="font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:8px">Asıl Kayıt</div>'
+        + '<div style="font-family:var(--font-head);font-size:13px;font-weight:700;margin-bottom:4px">' + d.masterName + '</div>'
+        + '<div style="font-size:10.5px;color:var(--muted)">' + d.masterName + '</div>'
+      + '</div>'
+      + '<div style="background:var(--surface2);border-radius:10px;padding:14px;border:1px solid rgba(255,255,255,0.04)">'
+        + '<div style="font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:8px">Duplicate</div>'
+        + '<div style="font-family:var(--font-head);font-size:13px;font-weight:700;margin-bottom:4px">' + d.dupName + '</div>'
+        + '<div style="font-size:10.5px;color:var(--muted)">' + d.dupName + '</div>'
+      + '</div>'
+    + '</div>'
+    + '<div style="background:var(--surface2);border-radius:10px;padding:14px;margin-bottom:20px">'
+      + '<div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:10px">Eşleşme Skoru</div>'
+      + '<div style="display:flex;align-items:center;gap:10px">'
+        + '<div style="flex:1;height:8px;background:var(--surface3);border-radius:4px;overflow:hidden">'
+          + '<div style="height:100%;width:' + d.score + '%;background:var(--accent);border-radius:4px"></div>'
+        + '</div>'
+        + '<span style="font-family:var(--font-head);font-size:16px;font-weight:700">%' + d.score + '</span>'
+      + '</div>'
+    + '</div>'
+    + actionBtns
+    + '</div>';
 }
 
 function mergeDup(id) {
-  const d = duplicatesData.find(x => x.id === id);
+  const d = duplicatesData.find(x => String(x.id) === String(id));
   d.resolved = true;
   saveToStorage();
   selectedDupId = null;
@@ -2375,7 +2373,7 @@ function mergeDup(id) {
 }
 
 function dismissDup(id) {
-  duplicatesData = duplicatesData.filter(x => x.id !== id);
+  duplicatesData = duplicatesData.filter(x => String(x.id) !== String(id));
   saveToStorage();
   selectedDupId = null;
   renderDuplicates();
@@ -2383,7 +2381,7 @@ function dismissDup(id) {
 }
 
 function unresolve(id) {
-  const d = duplicatesData.find(x => x.id === id);
+  const d = duplicatesData.find(x => String(x.id) === String(id));
   d.resolved = false;
   saveToStorage();
   renderDuplicates();
