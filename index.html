@@ -2694,8 +2694,8 @@ function renderFiles() {
 }
 
 function openFileModal(id) {
-  selectedFileId = id;
-  const f = filesData.find(x => x.id === id);
+  selectedFileId = Number(id) || id;
+  const f = filesData.find(x => x.id === selectedFileId);
   if (!f) return;
   const emoji = fileTypeEmoji[f.type] || '📁';
 
@@ -2728,7 +2728,7 @@ function closeFileModal(e) {
 }
 
 function saveFileEdit() {
-  const f = filesData.find(x => x.id === selectedFileId);
+  const f = filesData.find(x => x.id === selectedFileId || String(x.id) === String(selectedFileId));
   if (!f) return;
   const name = document.getElementById('fmd-name').value.trim();
   if (!name) { document.getElementById('fmd-name').focus(); return; }
@@ -2746,7 +2746,7 @@ function saveFileEdit() {
 
 function deleteSelectedFile() {
   if (!selectedFileId) return;
-  filesData = filesData.filter(f => f.id !== selectedFileId);
+  filesData = filesData.filter(f => f.id !== selectedFileId && String(f.id) !== String(selectedFileId));
   saveToStorage();
   document.getElementById('fileDetailModal').classList.remove('open');
   renderFiles();
