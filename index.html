@@ -1557,6 +1557,7 @@
         <div class="modal-actions" style="justify-content:space-between">
           <button type="button" class="btn btn-ghost" style="color:var(--red)" onclick="deleteSelectedFile()">🗑 Sil</button>
           <div style="display:flex;gap:8px">
+            <button type="button" class="btn btn-ghost" id="fi-download-btn" onclick="downloadFile()" style="display:none">↓ İndir</button>
             <button type="button" class="btn btn-ghost" onclick="document.getElementById('fileDetailModal').classList.remove('open')">İptal</button>
             <button type="button" class="btn btn-primary" onclick="saveFileEdit()">Kaydet</button>
           </div>
@@ -1914,8 +1915,9 @@ function renderUsersList() {
   const el = document.getElementById('usersList');
   if (!el) return;
   const roleLabels = { admin:'Yönetici', editor:'Editör', viewer:'Görüntüleyici' };
+  const isAdmin = (currentUser.role || 'admin') === 'admin';
   el.innerHTML = usersData.map((u, i) => `
-    <div style="display:flex;align-items:center;gap:10px;padding:10px 13px;background:var(--surface2);border-radius:9px">
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 13px;background:var(--surface2);border-radius:9px;margin-bottom:6px">
       <div style="width:30px;height:30px;border-radius:8px;background:var(--surface3);display:flex;align-items:center;justify-content:center;font-family:var(--font-head);font-size:12px;font-weight:700;flex-shrink:0">${u.username[0].toUpperCase()}</div>
       <div style="flex:1;min-width:0">
         <div style="font-size:12px;color:var(--text)">${u.username}</div>
@@ -1923,12 +1925,23 @@ function renderUsersList() {
       </div>
       ${u.username === currentUser.username
         ? '<span class="badge badge-muted" style="font-size:10px">Aktif</span>'
-        : `<button onclick="removeUser(${i})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;padding:0 4px" title="Sil">✕</button>`
+        : isAdmin
+          ? `<button onclick="removeUser(${i})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;padding:0 4px" title="Sil">✕</button>`
+          : ''
       }
     </div>`).join('');
+
+  // Hide add-user form for non-admins
+  const addSection = document.querySelector('#screen-settings .add-user-section');
+  if (addSection) addSection.style.display = isAdmin ? '' : 'none';
 }
 
 function addUser() {
+  if ((currentUser.role || 'admin') !== 'admin') {
+    document.getElementById('userAddMsg').textContent = '⛔ Sadece yöneticiler kullanıcı ekleyebilir.';
+    setTimeout(() => document.getElementById('userAddMsg').textContent = '', 2500);
+    return;
+  }
   const name = document.getElementById('new-user-name').value.trim();
   const pass = document.getElementById('new-user-pass').value.trim();
   const role = document.getElementById('new-user-role').value;
@@ -1950,6 +1963,10 @@ function addUser() {
 }
 
 function removeUser(i) {
+  if ((currentUser.role || 'admin') !== 'admin') {
+    showToast('⛔ Sadece yöneticiler kullanıcı silebilir.');
+    return;
+  }
   if (usersData[i].username === currentUser.username) return;
   usersData.splice(i, 1);
   saveToStorage();
@@ -2726,12 +2743,36 @@ function openFileModal(id) {
     yearSel.appendChild(opt);
   }
 
+  // show/hide download button
+  const dlBtn = document.getElementById('fi-download-btn');
+  if (dlBtn) dlBtn.style.display = (f.publicUrl || f.objectUrl) ? 'inline-flex' : 'none';
+
+  // show/hide delete button based on role
+  const delBtn = document.querySelector('#fileDetailModal .btn-ghost[onclick="deleteSelectedFile()"]');
+  if (delBtn) delBtn.style.display = (currentUser.role||'admin') === 'admin' ? '' : 'none';
+
   document.getElementById('fileDetailModal').classList.add('open');
 }
 
 function closeFileModal(e) {
   if (e.target === document.getElementById('fileDetailModal'))
     document.getElementById('fileDetailModal').classList.remove('open');
+}
+
+function downloadFile() {
+  const f = filesData.find(x => x.id === selectedFileId || String(x.id) === String(selectedFileId));
+  if (!f) return;
+  const url = f.publicUrl || f.objectUrl;
+  if (!url) {
+    showToast('İndirme linki yok. Dosyayı tekrar yükleyin.');
+    return;
+  }
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = (f.originalName || f.name + '.' + f.type);
+  a.target = '_blank';
+  a.click();
+  showToast('✓ İndiriliyor...');
 }
 
 function saveFileEdit() {
@@ -2752,6 +2793,7 @@ function saveFileEdit() {
 }
 
 function deleteSelectedFile() {
+  if ((currentUser.role || 'admin') !== 'admin') { showToast('⛔ Sadece yöneticiler dosya silebilir.'); return; }
   if (!selectedFileId) return;
   filesData = filesData.filter(f => f.id !== selectedFileId && String(f.id) !== String(selectedFileId));
   saveToStorage();
@@ -2759,25 +2801,68 @@ function deleteSelectedFile() {
   renderFiles();
 }
 
-function handleFileUpload(input) {
-  Array.from(input.files).forEach(file => {
-    const ext = file.name.split('.').pop().toLowerCase();
+async function handleFileUpload(input) {
+  const uploadedFiles = Array.from(input.files);
+  if (!uploadedFiles.length) return;
+
+  showToast('⏳ Yükleniyor...');
+
+  for (const file of uploadedFiles) {
+    const ext  = file.name.split('.').pop().toLowerCase();
     const type = ['pptx','psd','pdf','key','ai','sketch'].includes(ext) ? ext : 'other';
     const size = file.size > 1048576
       ? (file.size/1048576).toFixed(1)+' MB'
       : (file.size/1024).toFixed(0)+' KB';
+
+    let publicUrl = null;
+    let objectUrl = URL.createObjectURL(file); // fallback for local session
+
+    // Upload to Supabase Storage
+    if (supaOk) {
+      try {
+        const filePath = Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+        const res = await fetch(
+          SURL + '/storage/v1/object/harman-files/' + filePath,
+          {
+            method: 'POST',
+            headers: {
+              'apikey': SKEY,
+              'Authorization': 'Bearer ' + SKEY,
+              'Content-Type': file.type || 'application/octet-stream',
+              'x-upsert': 'true',
+            },
+            body: file,
+          }
+        );
+        if (res.ok) {
+          publicUrl = SURL + '/storage/v1/object/public/harman-files/' + filePath;
+        } else {
+          const err = await res.json().catch(() => ({}));
+          console.warn('Supabase Storage upload failed:', err);
+        }
+      } catch(e) {
+        console.warn('Storage upload error:', e);
+      }
+    }
+
     filesData.unshift({
-      id: nextFileId++,
-      name: file.name.replace(/\.[^.]+$/, ''),
+      id:           nextFileId++,
+      name:         file.name.replace(/\.[^.]+$/, ''),
+      originalName: file.name,
       type, size,
-      year: new Date().getFullYear(),
-      tags: [type],
-      uploadedAt: new Date().toLocaleDateString('tr-TR', { day:'2-digit', month:'short', year:'numeric' })
+      objectUrl,                  // works while page is open
+      publicUrl,                  // permanent Supabase URL
+      year:         new Date().getFullYear(),
+      tags:         [type],
+      uploadedAt:   new Date().toLocaleDateString('tr-TR', { day:'2-digit', month:'short', year:'numeric' }),
+      uploadedBy:   '', desc: ''
     });
-  });
+  }
+
   saveToStorage();
   renderFiles();
   input.value = '';
+  showToast('✓ ' + uploadedFiles.length + ' dosya yüklendi' + (supaOk ? ' (Supabase)' : ' (yerel)'));
 }
 
 function handleFileDrop(event) {
@@ -3285,6 +3370,7 @@ function confirmDeleteCompany(id) {
 }
 
 function deleteCompany() {
+  if ((currentUser.role || 'admin') !== 'admin') { showToast('⛔ Sadece yöneticiler şirket silebilir.'); closeEditCompanyModal(); return; }
   if (!selectedId) return;
   const co = companies.find(x => x.id === selectedId);
   if (!co) return;
