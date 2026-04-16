@@ -2688,6 +2688,7 @@ function renderFiles() {
   const cardsHTML = list.map(f => {
     const emoji = fileTypeEmoji[f.type] || '📁';
     const tagsHTML = f.tags.map(t => `<span class="file-tag">${t}</span>`).join('');
+    const hasDownload = !!(f.publicUrl || f.objectUrl);
     return `
     <div class="file-card" onclick="openFileModal('${f.id}')">
       <div class="file-thumb">
@@ -2701,6 +2702,7 @@ function renderFiles() {
           <span>${f.size}</span>
         </div>
         <div class="file-tags">${tagsHTML}</div>
+        ${hasDownload ? `<button onclick="event.stopPropagation();quickDownload('${f.id}')" style="margin-top:7px;width:100%;padding:5px 0;background:var(--surface3);border:1px solid var(--border);border-radius:7px;color:var(--muted2);font-family:var(--font-mono);font-size:10.5px;cursor:pointer;transition:all .12s" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted2)'">↓ İndir</button>` : ''}
       </div>
     </div>`;
   }).join('');
@@ -2759,6 +2761,16 @@ function closeFileModal(e) {
     document.getElementById('fileDetailModal').classList.remove('open');
 }
 
+function quickDownload(id) {
+  const f = filesData.find(x => String(x.id) === String(id));
+  if (!f) return;
+  const url = f.publicUrl || f.objectUrl;
+  if (!url) { showToast('İndirme linki yok, dosyayı tekrar yükleyin.'); return; }
+  const a = document.createElement('a');
+  a.href = url; a.download = f.originalName || f.name + '.' + f.type; a.target = '_blank'; a.click();
+  showToast('✓ İndiriliyor...');
+}
+
 function downloadFile() {
   const f = filesData.find(x => x.id === selectedFileId || String(x.id) === String(selectedFileId));
   if (!f) return;
@@ -2805,22 +2817,42 @@ async function handleFileUpload(input) {
   const uploadedFiles = Array.from(input.files);
   if (!uploadedFiles.length) return;
 
-  showToast('⏳ Yükleniyor...');
-
+  // Step 1: Add files locally immediately so they appear in the grid
+  const newEntries = [];
   for (const file of uploadedFiles) {
     const ext  = file.name.split('.').pop().toLowerCase();
     const type = ['pptx','psd','pdf','key','ai','sketch'].includes(ext) ? ext : 'other';
     const size = file.size > 1048576
       ? (file.size/1048576).toFixed(1)+' MB'
       : (file.size/1024).toFixed(0)+' KB';
+    const entry = {
+      id:           nextFileId++,
+      name:         file.name.replace(/\.[^.]+$/, ''),
+      originalName: file.name,
+      type, size,
+      objectUrl:    URL.createObjectURL(file),
+      publicUrl:    null,
+      year:         new Date().getFullYear(),
+      tags:         [type],
+      uploadedAt:   new Date().toLocaleDateString('tr-TR', { day:'2-digit', month:'short', year:'numeric' }),
+      uploadedBy:   '', desc: '',
+      _file:        file   // keep reference for Supabase upload
+    };
+    filesData.unshift(entry);
+    newEntries.push(entry);
+  }
 
-    let publicUrl = null;
-    let objectUrl = URL.createObjectURL(file); // fallback for local session
+  saveToStorage();
+  renderFiles();
+  input.value = '';
+  showToast('⏳ ' + uploadedFiles.length + ' dosya eklendi, yükleniyor...');
 
-    // Upload to Supabase Storage
-    if (supaOk) {
+  // Step 2: Upload to Supabase Storage in background
+  if (supaOk) {
+    let uploaded = 0;
+    for (const entry of newEntries) {
       try {
-        const filePath = Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+        const filePath = Date.now() + '_' + entry.originalName.replace(/[^a-zA-Z0-9._-]/g, '_');
         const res = await fetch(
           SURL + '/storage/v1/object/harman-files/' + filePath,
           {
@@ -2828,41 +2860,27 @@ async function handleFileUpload(input) {
             headers: {
               'apikey': SKEY,
               'Authorization': 'Bearer ' + SKEY,
-              'Content-Type': file.type || 'application/octet-stream',
+              'Content-Type': entry._file.type || 'application/octet-stream',
               'x-upsert': 'true',
             },
-            body: file,
+            body: entry._file,
           }
         );
         if (res.ok) {
-          publicUrl = SURL + '/storage/v1/object/public/harman-files/' + filePath;
-        } else {
-          const err = await res.json().catch(() => ({}));
-          console.warn('Supabase Storage upload failed:', err);
+          entry.publicUrl = SURL + '/storage/v1/object/public/harman-files/' + filePath;
+          uploaded++;
         }
       } catch(e) {
         console.warn('Storage upload error:', e);
       }
+      delete entry._file; // clean up file reference
     }
-
-    filesData.unshift({
-      id:           nextFileId++,
-      name:         file.name.replace(/\.[^.]+$/, ''),
-      originalName: file.name,
-      type, size,
-      objectUrl,                  // works while page is open
-      publicUrl,                  // permanent Supabase URL
-      year:         new Date().getFullYear(),
-      tags:         [type],
-      uploadedAt:   new Date().toLocaleDateString('tr-TR', { day:'2-digit', month:'short', year:'numeric' }),
-      uploadedBy:   '', desc: ''
-    });
+    saveToStorage();
+    renderFiles();
+    showToast('✓ ' + uploaded + '/' + newEntries.length + ' dosya Supabase yüklendi');
+  } else {
+    showToast('✓ ' + uploadedFiles.length + ' dosya eklendi (yerel)');
   }
-
-  saveToStorage();
-  renderFiles();
-  input.value = '';
-  showToast('✓ ' + uploadedFiles.length + ' dosya yüklendi' + (supaOk ? ' (Supabase)' : ' (yerel)'));
 }
 
 function handleFileDrop(event) {
