@@ -3197,7 +3197,7 @@ function renderList() {
     const delay  = Math.min(i * 0.03, 0.3);
 
     return `
-    <div class="company-card ${selectedId === c.id ? 'selected' : ''}"
+    <div class="company-card ${String(selectedId) === String(c.id) ? 'selected' : ''}"
          onclick="selectCompany('${c.id}')"
          style="animation-delay:${delay}s">
       <div class="company-avatar" style="background:${color}">${getInitials(c.name)}</div>
@@ -3242,7 +3242,7 @@ function selectCompany(id) {
 }
 
 function renderCompanyDetail(id) {
-  const co = companies.find(x => x.id === id);
+  const co = companies.find(x => String(x.id) === String(id));
   if (!co) return;
   const panel = document.getElementById('detailPanel');
   const color = getColor(co.name);
@@ -3326,7 +3326,7 @@ function renderCompanyDetail(id) {
 let editContactsTemp = [];
 
 function openEditCompanyModal(id) {
-  const co = companies.find(x => x.id === id);
+  const co = companies.find(x => String(x.id) === String(id));
   if (!co) return;
   selectedId = id;
   document.getElementById('ec-name').value     = co.name;
@@ -3365,7 +3365,7 @@ function addEditContact(type) {
 function saveEditCompany() {
   const name = document.getElementById('ec-name').value.trim();
   if (!name) { document.getElementById('ec-name').focus(); return; }
-  const co = companies.find(x => x.id === selectedId);
+  const co = companies.find(x => String(x.id) === String(selectedId));
   if (!co) return;
   co.name     = name;
   co.domain   = document.getElementById('ec-domain').value.trim();
@@ -3381,7 +3381,7 @@ function saveEditCompany() {
 }
 
 function confirmDeleteCompany(id) {
-  const co = companies.find(x => x.id === id);
+  const co = companies.find(x => String(x.id) === String(id));
   if (!co) return;
   if (!confirm(co.name + ' silinsin mi? Bu işlem geri alınamaz.')) return;
   deleteCompanyById(id);
@@ -3390,7 +3390,7 @@ function confirmDeleteCompany(id) {
 function deleteCompany() {
   if ((currentUser.role || 'admin') !== 'admin') { showToast('⛔ Sadece yöneticiler şirket silebilir.'); closeEditCompanyModal(); return; }
   if (!selectedId) return;
-  const co = companies.find(x => x.id === selectedId);
+  const co = companies.find(x => String(x.id) === String(selectedId));
   if (!co) return;
   if (!confirm(co.name + ' silinsin mi? Bu işlem geri alınamaz.')) return;
   closeEditCompanyModal();
@@ -3398,7 +3398,7 @@ function deleteCompany() {
 }
 
 function deleteCompanyById(id) {
-  const idx = companies.findIndex(x => x.id === id);
+  const idx = companies.findIndex(x => String(x.id) === String(id));
   if (idx === -1) return;
   companies.splice(idx, 1);
   saveToStorage();
