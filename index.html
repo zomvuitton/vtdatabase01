@@ -2536,17 +2536,17 @@ function handleCSVImport(input) {
   const file = input.files[0];
   if (!file) return;
   const reader = new FileReader();
-  reader.onload = function(e) {
+  reader.onload = async function(e) {
     const lines = e.target.result.split('\n').filter(l => l.trim());
     let added = 0, skipped = 0;
     lines.slice(1).forEach(line => {
       const cols = line.split(',').map(s => s.replace(/^"|"$/g,'').trim());
       const name = cols[0];
       if (!name) { skipped++; return; }
-      const existing = companies.find(c => c.name.toLowerCase() === name.toLowerCase());
+      const existing = companies.find(co => co.name.toLowerCase() === name.toLowerCase());
       if (existing) { skipped++; return; }
       companies.push({
-        id: companies.length + 200 + Math.floor(Math.random()*100),
+        id: ++nextId,
         name,
         domain:   cols[1] || '',
         sector:   cols[2] || 'Diğer',
@@ -2559,7 +2559,7 @@ function handleCSVImport(input) {
       });
       added++;
     });
-    saveToStorage();
+    await saveToStorage();
     renderList();
     document.getElementById('importResultBody').innerHTML = `
       <div style="display:flex;flex-direction:column;gap:10px">
