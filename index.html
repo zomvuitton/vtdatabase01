@@ -2536,31 +2536,39 @@ function handleCSVImport(input) {
   const file = input.files[0];
   if (!file) return;
   const reader = new FileReader();
-  reader.onload = async function(e) {
-    const lines = e.target.result.split('\n').filter(l => l.trim());
-    let added = 0, skipped = 0;
-    lines.slice(1).forEach(line => {
-      const cols = line.split(',').map(s => s.replace(/^"|"$/g,'').trim());
-      const name = cols[0];
-      if (!name) { skipped++; return; }
-      const existing = companies.find(co => co.name.toLowerCase() === name.toLowerCase());
-      if (existing) { skipped++; return; }
-      companies.push({
-        id: ++nextId,
-        name,
-        domain:   cols[1] || '',
-        sector:   cols[2] || 'Diğer',
-        city:     cols[3] || '—',
-        quality:  'incomplete',
-        response: 'none',
-        contacts: cols[4] ? [{ type:'email', value:cols[4], primary:true }] : [],
-        sources:  [file.name],
-        history:  [],
+  reader.onload = function(e) {
+    try {
+      const text = e.target.result;
+      // Support both comma and semicolon separators
+      const sep = text.indexOf(';') > text.indexOf(',') ? ';' : ',';
+      const lines = text.split(/\r?\n/).filter(l => l.trim());
+      if (lines.length < 2) {
+        alert('Dosya boş veya geçersiz format.');
+        return;
+      }
+      let added = 0, skipped = 0;
+      lines.slice(1).forEach(line => {
+        const cols = line.split(sep).map(s => s.replace(/^"|"$/g,'').trim());
+        const name = cols[0];
+        if (!name) { skipped++; return; }
+        const existing = companies.find(co => co.name.toLowerCase() === name.toLowerCase());
+        if (existing) { skipped++; return; }
+        companies.push({
+          id: ++nextId,
+          name,
+          domain:   cols[1] || '',
+          sector:   cols[2] || 'Diğer',
+          city:     cols[3] || '—',
+          quality:  'incomplete',
+          response: 'none',
+          contacts: cols[4] ? [{ type:'email', value:cols[4], primary:true }] : [],
+          sources:  [file.name],
+          history:  [],
+        });
+        added++;
       });
-      added++;
-    });
-    await saveToStorage();
-    renderList();
+      saveToStorage();
+      renderList();
     document.getElementById('importResultBody').innerHTML = `
       <div style="display:flex;flex-direction:column;gap:10px">
         <div style="background:var(--surface2);border-radius:9px;padding:14px;display:flex;justify-content:space-between">
@@ -2573,10 +2581,13 @@ function handleCSVImport(input) {
           CSV formatı: Ad, Domain, Sektör, Şehir, Email
         </div>
       </div>`;
-    document.getElementById('importResultModal').classList.add('open');
-    input.value = '';
+      document.getElementById('importResultModal').classList.add('open');
+      input.value = '';
+    } catch(err) {
+      alert('Dosya okunamadı: ' + err.message);
+    }
   };
-  reader.readAsText(file);
+  reader.readAsText(file, 'UTF-8');
 }
 
 // ── RAPOR İNDİR ──
