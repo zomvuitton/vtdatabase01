@@ -2333,6 +2333,7 @@ function getFilteredDups() {
 }
 
 function renderDuplicates() {
+  if (window.dbgLog) dbgLog('RENDER total=' + duplicatesData.length + ' pending=' + duplicatesData.filter(d=>!d.resolved).length);
   const pending  = duplicatesData.filter(d => !d.resolved).length;
   const resolved = duplicatesData.filter(d =>  d.resolved).length;
   document.getElementById('dcnt-pending').textContent  = pending;
