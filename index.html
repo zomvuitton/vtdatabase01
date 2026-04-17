@@ -1994,6 +1994,7 @@ async function renderSupabaseStatus() {
 
     if (res.ok) {
       useSupabase = true;
+      supaOk = true;
       dot.style.background = '#c8c8c8';
       text.textContent     = 'Bağlantı aktif';
       sub.textContent      = 'szqoldtcinbqjgfyptmq.supabase.co';
@@ -3633,6 +3634,7 @@ function renderSourceTable() {
 
 // ── SUPABASE ──
 const SUPA_URL = 'https://szqoldtcinbqjgfyptmq.supabase.co';
+let supaOk = false; // global flag
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN6cW9sZHRjaW5icWpnZnlwdG1xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwNjg4MzksImV4cCI6MjA5MTY0NDgzOX0.vR81__CCC7PdiAA4an1y0xxcCDQUUjOaI5CRx8yaPfI';
 
 const supa = {
@@ -3685,7 +3687,8 @@ async function checkSupabase() {
       headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}` }
     });
     useSupabase = res.ok;
-  } catch(e) { useSupabase = false; }
+    supaOk = res.ok; // sync global flag
+  } catch(e) { useSupabase = false; supaOk = false; }
   return useSupabase;
 }
 
@@ -3783,7 +3786,7 @@ function loadLocalOnlyData() {
 }
 
 async function loadFromStorage() {
-  const supaOk = await checkSupabase();
+  supaOk = await checkSupabase();
 
   if (supaOk) {
     try {
