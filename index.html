@@ -2435,9 +2435,6 @@ function mergeDup(id) {
 function dismissDup(id) {
   const idx = duplicatesData.findIndex(x => String(x.id) === String(id));
   if (idx === -1) return;
-  const d = duplicatesData[idx];
-  const pairKey = [String(d.masterId), String(d.dupId)].sort().join('|');
-  if (!dupBlacklist.includes(pairKey)) dupBlacklist.push(pairKey);
   duplicatesData.splice(idx, 1);
   saveToStorage();
   supabaseDelete('duplicates', id);
@@ -2457,11 +2454,10 @@ function unresolve(id) {
 
 function scanDuplicates() {
   const newDupes = [];
-  // Include blacklist (previously merged/dismissed pairs)
-  const seen = new Set([
-    ...duplicatesData.map(d => [String(d.masterId), String(d.dupId)].sort().join('|')),
-    ...dupBlacklist
-  ]);
+  // Only skip pairs already in the current duplicates list
+  const seen = new Set(
+    duplicatesData.map(d => [String(d.masterId), String(d.dupId)].sort().join('|'))
+  );
 
   for (let i = 0; i < companies.length; i++) {
     for (let j = i + 1; j < companies.length; j++) {
@@ -2558,8 +2554,6 @@ function autoMergeAll() {
       if (dupIdx !== -1) companies.splice(dupIdx, 1);
       supabaseDelete('companies', d.dupId);
     }
-    const pairKey = [String(d.masterId), String(d.dupId)].sort().join('|');
-    if (!dupBlacklist.includes(pairKey)) dupBlacklist.push(pairKey);
     supabaseDelete('duplicates', d.id);
     const idx = duplicatesData.findIndex(x => String(x.id) === String(d.id));
     if (idx !== -1) duplicatesData.splice(idx, 1);
