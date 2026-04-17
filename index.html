@@ -2399,8 +2399,11 @@ function selectDup(id) {
 
 function mergeDup(id) {
   const d = duplicatesData.find(x => String(x.id) === String(id));
+  if (!d) return;
   d.resolved = true;
+  duplicatesData = duplicatesData.filter(x => String(x.id) !== String(id));
   saveToStorage();
+  supabaseDelete('duplicates', id);
   selectedDupId = null;
   renderDuplicates();
   document.getElementById('dupDetail').innerHTML = `<div style="height:100%;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;color:var(--muted)"><div style="font-size:36px;opacity:.3">✅</div><div style="font-size:12px">Birleştirildi</div></div>`;
@@ -2493,11 +2496,13 @@ function scanDuplicates() {
 }
 
 function autoMergeAll() {
-  duplicatesData.filter(d => !d.resolved && d.score >= 90).forEach(d => d.resolved = true);
+  const toMerge = duplicatesData.filter(d => !d.resolved && d.score >= 90);
+  toMerge.forEach(d => supabaseDelete('duplicates', d.id));
+  duplicatesData = duplicatesData.filter(d => d.resolved || d.score < 90);
   saveToStorage();
   selectedDupId = null;
   renderDuplicates();
-  document.getElementById('dupDetail').innerHTML = `<div style="height:100%;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;color:var(--muted)"><div style="font-size:36px;opacity:.3">✅</div><div style="font-size:12px">Yüksek skorlular birleştirildi</div></div>`;
+  document.getElementById('dupDetail').innerHTML = `<div style="height:100%;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;color:var(--muted)"><div style="font-size:36px;opacity:.3">✅</div><div style="font-size:12px">${toMerge.length} çift birleştirildi</div></div>`;
 }
 
 // ── ADD COMPANY MODAL ──
