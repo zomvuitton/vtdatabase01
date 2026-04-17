@@ -2310,7 +2310,6 @@ let duplicatesData = [
 let activeDupFilter = 'pending';
 let selectedDupId   = null;
 let nextDupId       = 7;
-let dupBlacklist    = []; // resolved/dismissed pair keys - won't be re-added by scan
 
 const reasonLabel = {
   same_domain: '🌐 Aynı Domain',
@@ -2413,22 +2412,52 @@ function selectDup(id) {
 }
 
 function mergeDup(id) {
-  if (window.dbgLog) dbgLog('MERGE id=' + id + ' count=' + duplicatesData.length);
+  if (window.dbgLog) dbgLog('===MERGE START id=' + id);
   const idx = duplicatesData.findIndex(x => String(x.id) === String(id));
-  if (window.dbgLog) dbgLog('  idx=' + idx);
-  if (idx === -1) return;
+  if (idx === -1) { if (window.dbgLog) dbgLog('  FAIL: dup not found'); return; }
   const d = duplicatesData[idx];
-  const pairKey = [String(d.masterId), String(d.dupId)].sort().join('|');
-  if (!dupBlacklist.includes(pairKey)) dupBlacklist.push(pairKey);
-  if (window.dbgLog) dbgLog('  blacklisted ' + pairKey);
+  if (window.dbgLog) dbgLog('  masterId=' + d.masterId + ' (' + typeof d.masterId + ')');
+  if (window.dbgLog) dbgLog('  dupId=' + d.dupId + ' (' + typeof d.dupId + ')');
+  if (window.dbgLog) dbgLog('  companies count=' + companies.length);
+
+  // Find the two companies
+  const master = companies.find(co => String(co.id) === String(d.masterId));
+  const dup    = companies.find(co => String(co.id) === String(d.dupId));
+
+  if (window.dbgLog) dbgLog('  master=' + (master ? master.name : 'NULL'));
+  if (window.dbgLog) dbgLog('  dup=' + (dup ? dup.name : 'NULL'));
+
+  if (master && dup) {
+    // Merge data into master
+    if (!master.domain && dup.domain) master.domain = dup.domain;
+    dup.contacts.forEach(ct => {
+      if (!master.contacts.find(mc => mc.type === ct.type && mc.value === ct.value)) {
+        master.contacts.push({ ...ct, primary: false });
+      }
+    });
+    dup.sources.forEach(s => { if (!master.sources.includes(s)) master.sources.push(s); });
+    master.history = [...(master.history||[]), ...(dup.history||[])];
+
+    // Remove dup from companies
+    const dupIdx = companies.findIndex(co => String(co.id) === String(d.dupId));
+    if (window.dbgLog) dbgLog('  dupIdx in companies=' + dupIdx);
+    if (dupIdx !== -1) {
+      companies.splice(dupIdx, 1);
+      if (window.dbgLog) dbgLog('  DELETED from companies. New count=' + companies.length);
+      supabaseDelete('companies', d.dupId);
+    }
+    renderList();
+  } else {
+    if (window.dbgLog) dbgLog('  SKIPPING merge — companies not found with those IDs');
+  }
+
+  // Remove from duplicates list
   duplicatesData.splice(idx, 1);
-  if (window.dbgLog) dbgLog('  after splice=' + duplicatesData.length);
   saveToStorage();
-  const ls = localStorage.getItem('harman_duplicates');
-  if (window.dbgLog) dbgLog('  LS count=' + (ls ? JSON.parse(ls).length : 'null'));
   supabaseDelete('duplicates', id);
   selectedDupId = null;
   renderDuplicates();
+  if (window.dbgLog) dbgLog('===MERGE END');
   document.getElementById('dupDetail').innerHTML = `<div style="height:100%;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;color:var(--muted)"><div style="font-size:36px;opacity:.3">✅</div><div style="font-size:12px">Birleştirildi</div></div>`;
 }
 
@@ -3818,7 +3847,6 @@ function saveToLocalStorage() {
     localStorage.setItem('harman_files',      JSON.stringify(filesData));
     localStorage.setItem('harman_sources',    JSON.stringify(sourcesData));
     localStorage.setItem('harman_duplicates', JSON.stringify(duplicatesData));
-    localStorage.setItem('harman_dup_blacklist', JSON.stringify(dupBlacklist));
     localStorage.setItem('harman_auth',       JSON.stringify(currentUser));
     localStorage.setItem('harman_users',      JSON.stringify(usersData));
   } catch(e) { console.warn('localStorage write failed', e); }
@@ -3828,7 +3856,6 @@ function saveToLocalStorage() {
 function saveLocalOnly() {
   try {
     localStorage.setItem('harman_duplicates', JSON.stringify(duplicatesData));
-    localStorage.setItem('harman_dup_blacklist', JSON.stringify(dupBlacklist));
     localStorage.setItem('harman_files',      JSON.stringify(filesData));
     localStorage.setItem('harman_sources',    JSON.stringify(sourcesData));
     localStorage.setItem('harman_auth',       JSON.stringify(currentUser));
@@ -3841,9 +3868,7 @@ function loadLocalOnlyData() {
     const du = localStorage.getItem('harman_duplicates');
     if (window.dbgLog) dbgLog('LOAD LS=' + (du ? JSON.parse(du).length : 'null') + ' mem=' + duplicatesData.length);
     if (du) { duplicatesData.length = 0; JSON.parse(du).forEach(x => duplicatesData.push(x)); }
-    const bl = localStorage.getItem('harman_dup_blacklist');
-    if (bl) { dupBlacklist.length = 0; JSON.parse(bl).forEach(x => dupBlacklist.push(x)); }
-    if (window.dbgLog) dbgLog('  after load=' + duplicatesData.length + ' bl=' + dupBlacklist.length);
+    if (window.dbgLog) dbgLog('  after load=' + duplicatesData.length);
     const fi = localStorage.getItem('harman_files');
     if (fi) { filesData.length = 0; JSON.parse(fi).forEach(x => filesData.push(x)); }
     const so = localStorage.getItem('harman_sources');
@@ -3942,8 +3967,6 @@ async function loadFromStorage() {
     if (so) { sourcesData.length = 0; JSON.parse(so).forEach(x => sourcesData.push(x)); }
     const du = localStorage.getItem('harman_duplicates');
     if (du) { duplicatesData.length = 0; JSON.parse(du).forEach(x => duplicatesData.push(x)); }
-    const bl = localStorage.getItem('harman_dup_blacklist');
-    if (bl) { dupBlacklist.length = 0; JSON.parse(bl).forEach(x => dupBlacklist.push(x)); }
     const au = localStorage.getItem('harman_auth');
     if (au) { const p = JSON.parse(au); currentUser.username = p.username; currentUser.password = p.password; }
     const ud = localStorage.getItem('harman_users');
@@ -3967,6 +3990,9 @@ function showToast(msg) {
 }
 
 // ── INIT ──
+// Clear old blacklist storage key (no longer used)
+try { localStorage.removeItem('harman_dup_blacklist'); } catch(e) {}
+
 loadFromStorage().then(() => renderList());
 </script>
 </body>
