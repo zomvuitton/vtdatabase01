@@ -2512,7 +2512,7 @@ function addCompany() {
   if (phone) contacts.push({ type:'phone', value:phone, primary:true });
 
   const newCompany = {
-    id:       companies.length + 100 + Math.floor(Math.random()*100),
+    id:       ++nextId,
     name,
     domain:   document.getElementById('ac-domain').value.trim(),
     sector:   document.getElementById('ac-sector').value.trim() || 'Diğer',
@@ -2647,6 +2647,7 @@ let activeFileType  = 'all';
 let activeFileYear  = 'all';
 let fileSearchQuery = '';
 let selectedFileId  = null;
+let nextId          = 200;
 let nextFileId      = 11;
 
 function setFileFilter(type, el) {
