@@ -2398,10 +2398,9 @@ function selectDup(id) {
 }
 
 function mergeDup(id) {
-  const d = duplicatesData.find(x => String(x.id) === String(id));
-  if (!d) return;
-  d.resolved = true;
-  duplicatesData = duplicatesData.filter(x => String(x.id) !== String(id));
+  const idx = duplicatesData.findIndex(x => String(x.id) === String(id));
+  if (idx === -1) return;
+  duplicatesData.splice(idx, 1);
   saveToStorage();
   supabaseDelete('duplicates', id);
   selectedDupId = null;
@@ -2410,7 +2409,9 @@ function mergeDup(id) {
 }
 
 function dismissDup(id) {
-  duplicatesData = duplicatesData.filter(x => String(x.id) !== String(id));
+  const idx = duplicatesData.findIndex(x => String(x.id) === String(id));
+  if (idx === -1) return;
+  duplicatesData.splice(idx, 1);
   saveToStorage();
   supabaseDelete('duplicates', id);
   selectedDupId = null;
@@ -2497,8 +2498,11 @@ function scanDuplicates() {
 
 function autoMergeAll() {
   const toMerge = duplicatesData.filter(d => !d.resolved && d.score >= 90);
-  toMerge.forEach(d => supabaseDelete('duplicates', d.id));
-  duplicatesData = duplicatesData.filter(d => d.resolved || d.score < 90);
+  toMerge.forEach(d => {
+    supabaseDelete('duplicates', d.id);
+    const idx = duplicatesData.findIndex(x => String(x.id) === String(d.id));
+    if (idx !== -1) duplicatesData.splice(idx, 1);
+  });
   saveToStorage();
   selectedDupId = null;
   renderDuplicates();
