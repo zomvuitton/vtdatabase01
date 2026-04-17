@@ -3699,6 +3699,9 @@ async function checkSupabase() {
 
 // ── STORAGE (Supabase + localStorage fallback) ──
 async function saveToStorage() {
+  // Always save to localStorage first (synchronous, reliable)
+  saveToLocalStorage();
+
   if (useSupabase) {
     try {
       // companies
@@ -3741,14 +3744,10 @@ async function saveToStorage() {
       await dbA.upsert(dbAssets);
 
     } catch(e) {
-      console.warn('Supabase write failed, falling back to localStorage', e);
-      saveToLocalStorage();
-      return;
+      console.warn('Supabase write failed', e);
     }
-    // Always save non-Supabase data locally
+    // Save local-only data
     saveLocalOnly();
-  } else {
-    saveToLocalStorage();
   }
 }
 
