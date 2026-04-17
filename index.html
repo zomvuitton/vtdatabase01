@@ -2310,6 +2310,7 @@ let duplicatesData = [
 let activeDupFilter = 'pending';
 let selectedDupId   = null;
 let nextDupId       = 7;
+let dupBlacklist    = []; // resolved/dismissed pair keys - won't be re-added by scan
 
 const reasonLabel = {
   same_domain: '🌐 Aynı Domain',
@@ -2416,6 +2417,10 @@ function mergeDup(id) {
   const idx = duplicatesData.findIndex(x => String(x.id) === String(id));
   if (window.dbgLog) dbgLog('  idx=' + idx);
   if (idx === -1) return;
+  const d = duplicatesData[idx];
+  const pairKey = [String(d.masterId), String(d.dupId)].sort().join('|');
+  if (!dupBlacklist.includes(pairKey)) dupBlacklist.push(pairKey);
+  if (window.dbgLog) dbgLog('  blacklisted ' + pairKey);
   duplicatesData.splice(idx, 1);
   if (window.dbgLog) dbgLog('  after splice=' + duplicatesData.length);
   saveToStorage();
@@ -2430,6 +2435,9 @@ function mergeDup(id) {
 function dismissDup(id) {
   const idx = duplicatesData.findIndex(x => String(x.id) === String(id));
   if (idx === -1) return;
+  const d = duplicatesData[idx];
+  const pairKey = [String(d.masterId), String(d.dupId)].sort().join('|');
+  if (!dupBlacklist.includes(pairKey)) dupBlacklist.push(pairKey);
   duplicatesData.splice(idx, 1);
   saveToStorage();
   supabaseDelete('duplicates', id);
@@ -2449,7 +2457,11 @@ function unresolve(id) {
 
 function scanDuplicates() {
   const newDupes = [];
-  const seen = new Set(duplicatesData.map(d => [d.masterId, d.dupId].sort().join('|')));
+  // Include blacklist (previously merged/dismissed pairs)
+  const seen = new Set([
+    ...duplicatesData.map(d => [String(d.masterId), String(d.dupId)].sort().join('|')),
+    ...dupBlacklist
+  ]);
 
   for (let i = 0; i < companies.length; i++) {
     for (let j = i + 1; j < companies.length; j++) {
@@ -2518,6 +2530,8 @@ function scanDuplicates() {
 function autoMergeAll() {
   const toMerge = duplicatesData.filter(d => !d.resolved && d.score >= 90);
   toMerge.forEach(d => {
+    const pairKey = [String(d.masterId), String(d.dupId)].sort().join('|');
+    if (!dupBlacklist.includes(pairKey)) dupBlacklist.push(pairKey);
     supabaseDelete('duplicates', d.id);
     const idx = duplicatesData.findIndex(x => String(x.id) === String(d.id));
     if (idx !== -1) duplicatesData.splice(idx, 1);
@@ -3781,6 +3795,7 @@ function saveToLocalStorage() {
     localStorage.setItem('harman_files',      JSON.stringify(filesData));
     localStorage.setItem('harman_sources',    JSON.stringify(sourcesData));
     localStorage.setItem('harman_duplicates', JSON.stringify(duplicatesData));
+    localStorage.setItem('harman_dup_blacklist', JSON.stringify(dupBlacklist));
     localStorage.setItem('harman_auth',       JSON.stringify(currentUser));
     localStorage.setItem('harman_users',      JSON.stringify(usersData));
   } catch(e) { console.warn('localStorage write failed', e); }
@@ -3790,6 +3805,7 @@ function saveToLocalStorage() {
 function saveLocalOnly() {
   try {
     localStorage.setItem('harman_duplicates', JSON.stringify(duplicatesData));
+    localStorage.setItem('harman_dup_blacklist', JSON.stringify(dupBlacklist));
     localStorage.setItem('harman_files',      JSON.stringify(filesData));
     localStorage.setItem('harman_sources',    JSON.stringify(sourcesData));
     localStorage.setItem('harman_auth',       JSON.stringify(currentUser));
@@ -3802,7 +3818,9 @@ function loadLocalOnlyData() {
     const du = localStorage.getItem('harman_duplicates');
     if (window.dbgLog) dbgLog('LOAD LS=' + (du ? JSON.parse(du).length : 'null') + ' mem=' + duplicatesData.length);
     if (du) { duplicatesData.length = 0; JSON.parse(du).forEach(x => duplicatesData.push(x)); }
-    if (window.dbgLog) dbgLog('  after load=' + duplicatesData.length);
+    const bl = localStorage.getItem('harman_dup_blacklist');
+    if (bl) { dupBlacklist.length = 0; JSON.parse(bl).forEach(x => dupBlacklist.push(x)); }
+    if (window.dbgLog) dbgLog('  after load=' + duplicatesData.length + ' bl=' + dupBlacklist.length);
     const fi = localStorage.getItem('harman_files');
     if (fi) { filesData.length = 0; JSON.parse(fi).forEach(x => filesData.push(x)); }
     const so = localStorage.getItem('harman_sources');
@@ -3901,6 +3919,8 @@ async function loadFromStorage() {
     if (so) { sourcesData.length = 0; JSON.parse(so).forEach(x => sourcesData.push(x)); }
     const du = localStorage.getItem('harman_duplicates');
     if (du) { duplicatesData.length = 0; JSON.parse(du).forEach(x => duplicatesData.push(x)); }
+    const bl = localStorage.getItem('harman_dup_blacklist');
+    if (bl) { dupBlacklist.length = 0; JSON.parse(bl).forEach(x => dupBlacklist.push(x)); }
     const au = localStorage.getItem('harman_auth');
     if (au) { const p = JSON.parse(au); currentUser.username = p.username; currentUser.password = p.password; }
     const ud = localStorage.getItem('harman_users');
