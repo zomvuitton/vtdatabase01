@@ -2485,7 +2485,7 @@ function scanDuplicates() {
         const shared  = aEmails.filter(e => bEmails.includes(e));
         if (shared.length) { reason = 'same_email'; score = 95; }
       }
-      // 3. Fuzzy name match (simple: normalized contains or high overlap)
+      // 3. Fuzzy name match — Dice coefficient + shared sector-keyword bonus
       if (!reason) {
         const norm = s => s.toLowerCase().replace(/[^a-z0-9ığüşöçA-ZİĞÜŞÖÇ\s]/g, '').trim();
         const na = norm(a.name);
@@ -2496,8 +2496,18 @@ function scanDuplicates() {
           const bigrams = s => { const bg = new Set(); for(let k=0;k<s.length-1;k++) bg.add(s[k]+s[k+1]); return bg; };
           const ba = bigrams(na), bb = bigrams(nb);
           const inter = [...ba].filter(x => bb.has(x)).length;
-          const dice  = (2 * inter) / (ba.size + bb.size);
-          if (dice > 0.72) { reason = 'fuzzy_name'; score = Math.round(dice * 100); }
+          const dice  = (ba.size + bb.size > 0) ? (2 * inter) / (ba.size + bb.size) : 0;
+          // Also check shared significant words (not stopwords)
+          const stopWords = new Set(['ve','a.ş.','ltd.','şti.','inc','co','ltd','as','sti','grup','group','company','corp']);
+          const wordsA = na.split(/\s+/).filter(w => w.length > 3 && !stopWords.has(w));
+          const wordsB = nb.split(/\s+/).filter(w => w.length > 3 && !stopWords.has(w));
+          const sharedWords = wordsA.filter(w => wordsB.includes(w));
+          // Same sector + shared word = likely duplicate
+          const sameSector = a.sector && b.sector && a.sector === b.sector;
+          if (dice > 0.65) { reason = 'fuzzy_name'; score = Math.round(dice * 100); }
+          else if (sharedWords.length >= 1 && sameSector && (wordsA.length + wordsB.length) <= 5) {
+            reason = 'fuzzy_name'; score = 70;
+          }
         }
       }
 
@@ -2519,10 +2529,12 @@ function scanDuplicates() {
 
   if (newDupes.length === 0) {
     showToast('Yeni duplicate bulunamadı');
+    if (window.dbgLog) dbgLog('SCAN found 0 new (seen=' + seen.size + ')');
   } else {
     newDupes.forEach(d => duplicatesData.push(d));
     saveToStorage();
     showToast('✓ ' + newDupes.length + ' yeni duplicate bulundu');
+    if (window.dbgLog) dbgLog('SCAN found ' + newDupes.length + ' new');
   }
   renderDuplicates();
 }
@@ -2530,6 +2542,22 @@ function scanDuplicates() {
 function autoMergeAll() {
   const toMerge = duplicatesData.filter(d => !d.resolved && d.score >= 90);
   toMerge.forEach(d => {
+    // Merge companies
+    const master = companies.find(co => String(co.id) === String(d.masterId));
+    const dup    = companies.find(co => String(co.id) === String(d.dupId));
+    if (master && dup) {
+      if (!master.domain && dup.domain) master.domain = dup.domain;
+      dup.contacts.forEach(ct => {
+        if (!master.contacts.find(mc => mc.type === ct.type && mc.value === ct.value)) {
+          master.contacts.push({ ...ct, primary: false });
+        }
+      });
+      dup.sources.forEach(s => { if (!master.sources.includes(s)) master.sources.push(s); });
+      master.history = [...(master.history||[]), ...(dup.history||[])];
+      const dupIdx = companies.findIndex(co => String(co.id) === String(d.dupId));
+      if (dupIdx !== -1) companies.splice(dupIdx, 1);
+      supabaseDelete('companies', d.dupId);
+    }
     const pairKey = [String(d.masterId), String(d.dupId)].sort().join('|');
     if (!dupBlacklist.includes(pairKey)) dupBlacklist.push(pairKey);
     supabaseDelete('duplicates', d.id);
@@ -2537,6 +2565,7 @@ function autoMergeAll() {
     if (idx !== -1) duplicatesData.splice(idx, 1);
   });
   saveToStorage();
+  renderList();
   selectedDupId = null;
   renderDuplicates();
   document.getElementById('dupDetail').innerHTML = `<div style="height:100%;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;color:var(--muted)"><div style="font-size:36px;opacity:.3">✅</div><div style="font-size:12px">${toMerge.length} çift birleştirildi</div></div>`;
