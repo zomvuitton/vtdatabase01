@@ -2408,6 +2408,7 @@ function mergeDup(id) {
 function dismissDup(id) {
   duplicatesData = duplicatesData.filter(x => String(x.id) !== String(id));
   saveToStorage();
+  supabaseDelete('duplicates', id);
   selectedDupId = null;
   renderDuplicates();
   document.getElementById('dupDetail').innerHTML = `<div style="height:100%;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;color:var(--muted)"><div style="font-size:36px;opacity:.3">⚠️</div><div style="font-size:12px">Detay için çift seç</div></div>`;
@@ -2819,8 +2820,18 @@ function saveFileEdit() {
 function deleteSelectedFile() {
   if ((currentUser.role || 'admin') !== 'admin') { showToast('⛔ Sadece yöneticiler dosya silebilir.'); return; }
   if (!selectedFileId) return;
-  filesData = filesData.filter(f => f.id !== selectedFileId && String(f.id) !== String(selectedFileId));
+  const f = filesData.find(x => String(x.id) === String(selectedFileId));
+  filesData = filesData.filter(f => String(f.id) !== String(selectedFileId));
   saveToStorage();
+  supabaseDelete('assets', selectedFileId);
+  // Also delete from Storage if has publicUrl
+  if (f && f.publicUrl && supaOk) {
+    const path = f.publicUrl.split('/harman-files/')[1];
+    if (path) fetch(SUPA_URL + '/storage/v1/object/harman-files/' + path, {
+      method: 'DELETE',
+      headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY }
+    }).catch(()=>{});
+  }
   document.getElementById('fileDetailModal').classList.remove('open');
   renderFiles();
 }
@@ -3414,6 +3425,7 @@ function deleteCompanyById(id) {
   if (idx === -1) return;
   companies.splice(idx, 1);
   saveToStorage();
+  supabaseDelete('companies', id);
   selectedId = null;
   renderList();
   document.getElementById('detailPanel').innerHTML = `
@@ -3464,6 +3476,7 @@ function deleteCampaign() {
   const idx = campaigns.findIndex(x => x.id === selectedCampId);
   campaigns.splice(idx, 1);
   saveToStorage();
+  supabaseDelete('campaigns', selectedCampId);
   closeEditCampModal();
   selectedCampId = null;
   renderCampList();
@@ -3651,6 +3664,17 @@ const supa = {
     };
   }
 };
+
+// Supabase delete helper
+async function supabaseDelete(table, id) {
+  if (!supaOk) return;
+  try {
+    await fetch(SUPA_URL + '/rest/v1/' + table + '?id=eq.' + encodeURIComponent(String(id)), {
+      method: 'DELETE',
+      headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY }
+    });
+  } catch(e) { console.warn('Supabase delete failed:', e); }
+}
 
 // Supabase'de tablolar hazır mı kontrol et, değilse localStorage'a fallback yap
 let useSupabase = false;
