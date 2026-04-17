@@ -1175,6 +1175,19 @@
   </div>
 </div>
 
+<div id="dbgPanel" style="position:fixed;bottom:80px;right:10px;background:#000;color:#0f0;border:1px solid #0f0;border-radius:8px;padding:10px;font-family:monospace;font-size:10px;max-width:280px;max-height:200px;overflow-y:auto;z-index:99999;display:none"></div>
+<button id="dbgToggle" onclick="document.getElementById('dbgPanel').style.display=document.getElementById('dbgPanel').style.display==='none'?'block':'none'" style="position:fixed;bottom:10px;right:10px;background:#0a0a0a;color:#0f0;border:1px solid #0f0;border-radius:50%;width:40px;height:40px;cursor:pointer;z-index:99999;font-family:monospace">🐛</button>
+
+<script>
+window.dbgLog = function(msg) {
+  const p = document.getElementById('dbgPanel');
+  if (!p) return;
+  const t = new Date().toLocaleTimeString('tr-TR');
+  p.innerHTML = '[' + t + '] ' + msg + '<br>' + p.innerHTML;
+  if (p.innerHTML.length > 5000) p.innerHTML = p.innerHTML.substring(0, 5000);
+};
+</script>
+
 <div class="app">
 
   <!-- SIDEBAR -->
@@ -2398,10 +2411,15 @@ function selectDup(id) {
 }
 
 function mergeDup(id) {
+  if (window.dbgLog) dbgLog('MERGE id=' + id + ' count=' + duplicatesData.length);
   const idx = duplicatesData.findIndex(x => String(x.id) === String(id));
+  if (window.dbgLog) dbgLog('  idx=' + idx);
   if (idx === -1) return;
   duplicatesData.splice(idx, 1);
+  if (window.dbgLog) dbgLog('  after splice=' + duplicatesData.length);
   saveToStorage();
+  const ls = localStorage.getItem('harman_duplicates');
+  if (window.dbgLog) dbgLog('  LS count=' + (ls ? JSON.parse(ls).length : 'null'));
   supabaseDelete('duplicates', id);
   selectedDupId = null;
   renderDuplicates();
@@ -3781,7 +3799,9 @@ function saveLocalOnly() {
 function loadLocalOnlyData() {
   try {
     const du = localStorage.getItem('harman_duplicates');
+    if (window.dbgLog) dbgLog('LOAD LS=' + (du ? JSON.parse(du).length : 'null') + ' mem=' + duplicatesData.length);
     if (du) { duplicatesData.length = 0; JSON.parse(du).forEach(x => duplicatesData.push(x)); }
+    if (window.dbgLog) dbgLog('  after load=' + duplicatesData.length);
     const fi = localStorage.getItem('harman_files');
     if (fi) { filesData.length = 0; JSON.parse(fi).forEach(x => filesData.push(x)); }
     const so = localStorage.getItem('harman_sources');
