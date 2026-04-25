@@ -1137,6 +1137,78 @@
   }
 
   .detail-header, .stats-row, .detail-body { animation: slideIn 0.2s ease both; }
+
+  /* ── SHORTCUT MODAL ── */
+  .shortcut-section-title {
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    color: var(--muted);
+    margin: 16px 0 8px;
+    font-weight: 500;
+  }
+  .shortcut-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: var(--surface2);
+    border-radius: 8px;
+    margin-bottom: 5px;
+    font-size: 12px;
+    color: var(--muted2);
+  }
+  .shortcut-row:last-child { margin-bottom: 0; }
+  .shortcut-desc { color: var(--text); font-size: 12px; }
+  .shortcut-keys { display: flex; gap: 4px; align-items: center; }
+  .kbd {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--surface3);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-bottom-width: 2px;
+    border-radius: 5px;
+    padding: 2px 7px;
+    font-size: 10.5px;
+    color: var(--accent);
+    font-family: var(--font-mono);
+    min-width: 22px;
+    white-space: nowrap;
+  }
+  .kbd-plus { color: var(--muted); font-size: 10px; }
+
+  /* ── DASH DATE FILTER ── */
+  .dash-date-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-family: var(--font-mono);
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--muted2);
+    white-space: nowrap;
+    transition: all 0.15s;
+  }
+  .dash-date-chip:hover { color: var(--text); border-color: rgba(255,255,255,0.15); }
+  .dash-date-chip.active { background: rgba(255,255,255,0.07); border-color: var(--accent); color: var(--accent); }
+
+  /* ── COPY BUTTON ── */
+  .copy-btn {
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 12px;
+    padding: 2px 5px;
+    border-radius: 5px;
+    transition: color .12s, background .12s;
+    flex-shrink: 0;
+  }
+  .copy-btn:hover { color: var(--text); background: var(--surface3); }
 </style>
 </head>
 <body>
@@ -1144,7 +1216,7 @@
 <div id="loginScreen" style="position:fixed;inset:0;background:#0a0a0a;display:flex;align-items:center;justify-content:center;z-index:9999;font-family:'DM Mono',monospace">
   <div style="width:340px">
     <div style="text-align:center;margin-bottom:36px">
-      <div style="width:48px;height:48px;background:linear-gradient(135deg,#404040,#1e1e1e);border-radius:14px;display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:800;font-size:20px;color:#efefef;margin:0 auto 14px">C</div>
+      <div style="width:48px;height:48px;background:linear-gradient(135deg,#404040,#1e1e1e);border-radius:14px;display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:800;font-size:14px;color:#efefef;margin:0 auto 14px">VT</div>
       <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:#efefef;margin-bottom:4px">Harman</div>
       <div style="font-size:11px;color:#555">Devam etmek için giriş yapın</div>
     </div>
@@ -1192,7 +1264,7 @@ window.dbgLog = function(msg) {
 
   <!-- SIDEBAR -->
   <aside class="sidebar">
-    <div class="sidebar-logo">C</div>
+    <div class="sidebar-logo" style="font-size:13px">VT</div>
 
     <div class="nav-item active" onclick="setNav(this,'companies')">
       🏢
@@ -1289,6 +1361,12 @@ window.dbgLog = function(msg) {
     <div class="screen" id="screen-dashboard">
       <div class="topbar">
         <div class="topbar-title">Dashboard</div>
+        <div style="display:flex;align-items:center;gap:6px;margin-left:20px" id="dashDateChips">
+          <div class="dash-date-chip active" onclick="setDashRange('all',this)">Tümü</div>
+          <div class="dash-date-chip" onclick="setDashRange('7',this)">Son 7 Gün</div>
+          <div class="dash-date-chip" onclick="setDashRange('30',this)">Son 30 Gün</div>
+          <div class="dash-date-chip" onclick="setDashRange('60',this)">Son 60 Gün</div>
+        </div>
         <div style="margin-left:auto;display:flex;gap:10px">
           <button class="btn btn-ghost" onclick="downloadReport()">↓ Rapor İndir</button>
         </div>
@@ -1514,6 +1592,33 @@ window.dbgLog = function(msg) {
           ondrop="handleFileDrop(event)">
           <!-- cards rendered by JS -->
         </div>
+      </div>
+    </div>
+
+    <!-- MODAL: Klavye Kısayolları -->
+    <div class="modal-overlay" id="shortcutsModal" onclick="if(event.target===this)closeShortcutsModal()">
+      <div class="modal" style="width:480px">
+        <div class="modal-title">
+          ⌨ Klavye Kısayolları
+          <button class="modal-close" onclick="closeShortcutsModal()">✕</button>
+        </div>
+
+        <div class="shortcut-section-title">Navigasyon</div>
+        <div class="shortcut-row"><span class="shortcut-desc">Şirketler</span><span class="shortcut-keys"><span class="kbd">1</span></span></div>
+        <div class="shortcut-row"><span class="shortcut-desc">Kampanyalar</span><span class="shortcut-keys"><span class="kbd">2</span></span></div>
+        <div class="shortcut-row"><span class="shortcut-desc">Dashboard</span><span class="shortcut-keys"><span class="kbd">3</span></span></div>
+        <div class="shortcut-row"><span class="shortcut-desc">Dosyalar</span><span class="shortcut-keys"><span class="kbd">4</span></span></div>
+        <div class="shortcut-row"><span class="shortcut-desc">Duplicate'ler</span><span class="shortcut-keys"><span class="kbd">5</span></span></div>
+        <div class="shortcut-row"><span class="shortcut-desc">Ayarlar</span><span class="shortcut-keys"><span class="kbd">6</span></span></div>
+
+        <div class="shortcut-section-title">Eylemler</div>
+        <div class="shortcut-row"><span class="shortcut-desc">Aramaya odaklan</span><span class="shortcut-keys"><span class="kbd">⌘</span><span class="kbd-plus">+</span><span class="kbd">K</span></span></div>
+        <div class="shortcut-row"><span class="shortcut-desc">Yeni şirket ekle</span><span class="shortcut-keys"><span class="kbd">⌘</span><span class="kbd-plus">+</span><span class="kbd">N</span></span></div>
+        <div class="shortcut-row"><span class="shortcut-desc">Rapor indir</span><span class="shortcut-keys"><span class="kbd">⌘</span><span class="kbd-plus">+</span><span class="kbd">E</span></span></div>
+
+        <div class="shortcut-section-title">Genel</div>
+        <div class="shortcut-row"><span class="shortcut-desc">Modal kapat / İptal</span><span class="shortcut-keys"><span class="kbd">Esc</span></span></div>
+        <div class="shortcut-row"><span class="shortcut-desc">Bu ekranı aç</span><span class="shortcut-keys"><span class="kbd">?</span></span></div>
       </div>
     </div>
 
@@ -1761,6 +1866,13 @@ window.dbgLog = function(msg) {
           <div class="dash-card" style="border-color:rgba(255,255,255,0.06)">
             <div class="dash-card-title" style="margin-bottom:16px">Oturum</div>
             <button class="btn btn-ghost" style="width:100%;justify-content:center" onclick="doLogout()">⏻ Çıkış Yap</button>
+          </div>
+
+          <!-- Klavye Kısayolları -->
+          <div class="dash-card">
+            <div class="dash-card-title" style="margin-bottom:4px">Klavye Kısayolları</div>
+            <div style="font-size:11px;color:var(--muted);margin-bottom:14px">Uygulamayı daha hızlı kullanmak için</div>
+            <button class="btn btn-ghost" style="width:100%;justify-content:center" onclick="openShortcutsModal()">⌨ Kısayolları Görüntüle</button>
           </div>
 
         </div>
@@ -3315,7 +3427,13 @@ function renderList() {
   const filtered = getFiltered();
 
   if (filtered.length === 0) {
-    list.innerHTML = `<div style="text-align:center;color:var(--muted);padding:40px 20px;font-size:13px;">Sonuç bulunamadı</div>`;
+    const hasFilter = activeFilter !== 'all' || searchQuery;
+    list.innerHTML = `
+      <div style="text-align:center;color:var(--muted);padding:48px 20px 40px;font-size:13px">
+        <div style="font-size:36px;opacity:.3;margin-bottom:12px">🔍</div>
+        <div style="margin-bottom:14px">${hasFilter ? 'Bu filtreyle eşleşen şirket yok.' : 'Henüz şirket eklenmemiş.'}</div>
+        ${hasFilter ? `<button onclick="resetFilter()" class="btn btn-ghost" style="margin:0 auto;font-size:11px">✕ Filtreyi Sıfırla</button>` : ''}
+      </div>`;
     return;
   }
 
@@ -3396,6 +3514,7 @@ function renderCompanyDetail(id) {
       <div class="contact-row">
         <span class="contact-icon">${ct.type === 'email' ? '✉️' : '📞'}</span>
         <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${ct.value}</span>
+        <button class="copy-btn" title="Kopyala" onclick="copyToClipboard('${ct.value.replace(/'/g,"\\'")}')">⎘</button>
         ${ct.primary ? `<span class="badge badge-muted contact-primary">Birincil</span>` : ''}
       </div>`).join('')
     : `<div style="color:var(--muted);font-size:11.5px">İletişim bilgisi yok</div>`;
@@ -3593,21 +3712,74 @@ function deleteCampaign() {
     </div>`;
 }
 // ── DASHBOARD ──
+let dashDateRange = 'all';
+
+const TR_MONTHS = { 'Oca':0,'Şub':1,'Mar':2,'Nis':3,'May':4,'Haz':5,'Tem':6,'Ağu':7,'Eyl':8,'Eki':9,'Kas':10,'Ara':11 };
+function parseTRDate(s) {
+  if (!s) return null;
+  const p = s.trim().split(' ');
+  if (p.length !== 3) return null;
+  const m = TR_MONTHS[p[1]];
+  if (m === undefined) return null;
+  return new Date(parseInt(p[2]), m, parseInt(p[0]));
+}
+
+function setDashRange(range, el) {
+  dashDateRange = range;
+  document.querySelectorAll('#dashDateChips .dash-date-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  renderDashboard();
+}
+
+function getDashCutoff() {
+  if (dashDateRange === 'all') return null;
+  const d = new Date();
+  d.setDate(d.getDate() - parseInt(dashDateRange));
+  return d;
+}
+
+function filterHistoryByDate(history) {
+  const cutoff = getDashCutoff();
+  if (!cutoff) return history;
+  return history.filter(h => {
+    const d = parseTRDate(h.date);
+    return d && d >= cutoff;
+  });
+}
+
 function renderDashboard() {
+  const cutoff = getDashCutoff();
   const total    = companies.length;
-  const positive = companies.filter(c => c.response === 'positive').length;
-  const negative = companies.filter(c => c.response === 'negative').length;
   const dirty    = companies.filter(c => c.quality === 'dirty' || c.quality === 'incomplete').length;
-  const none     = companies.filter(c => c.response === 'none').length;
+
+  let positive, negative;
+  if (!cutoff) {
+    positive = companies.filter(c => c.response === 'positive').length;
+    negative = companies.filter(c => c.response === 'negative').length;
+  } else {
+    // Count companies with a positive/negative history entry in range
+    const positiveSet = new Set();
+    const negativeSet = new Set();
+    companies.forEach(c => {
+      filterHistoryByDate(c.history).forEach(h => {
+        if (h.response === 'positive') positiveSet.add(c.id);
+        if (h.response === 'negative') negativeSet.add(c.id);
+      });
+    });
+    positive = positiveSet.size;
+    negative = negativeSet.size;
+  }
+
+  const none = total - positive - negative;
 
   document.getElementById('kpi-total').textContent    = total;
   document.getElementById('kpi-positive').textContent = positive;
   document.getElementById('kpi-negative').textContent = negative;
   document.getElementById('kpi-dirty').textContent    = dirty;
-  document.getElementById('kpi-positive-rate').textContent = `%${Math.round(positive/total*100)} dönüşüm oranı`;
-  document.getElementById('kpi-negative-rate').textContent = `%${Math.round(negative/total*100)} ret oranı`;
+  document.getElementById('kpi-positive-rate').textContent = total ? `%${Math.round(positive/total*100)} dönüşüm oranı` : '—';
+  document.getElementById('kpi-negative-rate').textContent = total ? `%${Math.round(negative/total*100)} ret oranı` : '—';
 
-  drawDonut(positive, negative, none, dirty);
+  drawDonut(positive, negative, none < 0 ? 0 : none, dirty);
   renderSectorChart();
   renderActivity();
   renderSourceTable();
@@ -3690,11 +3862,15 @@ function renderSectorChart() {
 function renderActivity() {
   const activities = [];
   companies.forEach(c => {
-    c.history.forEach(h => {
+    filterHistoryByDate(c.history).forEach(h => {
       activities.push({ company: c.name, ...h });
     });
   });
-  activities.sort((a,b) => b.date.localeCompare(a.date));
+  activities.sort((a,b) => {
+    const da = parseTRDate(a.date), db = parseTRDate(b.date);
+    if (!da || !db) return b.date.localeCompare(a.date);
+    return db - da;
+  });
 
   const dotColor = r => r === 'positive' ? 'var(--green)' : r === 'negative' ? 'var(--red)' : 'var(--muted)';
   const actionText = r => r === 'positive' ? 'olumlu dönüş verdi' : r === 'negative' ? 'olumsuz dönüş verdi' : 'mail açtı';
@@ -3739,6 +3915,103 @@ function renderSourceTable() {
       </tr>`;
     }).join('');
 }
+
+
+// ── SHORTCUTS MODAL ──
+function openShortcutsModal()  { document.getElementById('shortcutsModal').classList.add('open'); }
+function closeShortcutsModal() { document.getElementById('shortcutsModal').classList.remove('open'); }
+
+// ── COPY TO CLIPBOARD ──
+function copyToClipboard(text) {
+  navigator.clipboard.writeText(text).then(() => {
+    showToast('✓ Kopyalandı: ' + text);
+  }).catch(() => {
+    // Fallback for older browsers
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    showToast('✓ Kopyalandı');
+  });
+}
+
+// ── FILTER RESET ──
+function resetFilter() {
+  activeFilter = 'all';
+  searchQuery  = '';
+  document.querySelectorAll('#screen-companies .filter-chip').forEach(c => c.classList.remove('active'));
+  const allChip = document.querySelector('#screen-companies .filter-chip');
+  if (allChip) allChip.classList.add('active');
+  const searchEl = document.querySelector('#screen-companies .search-input');
+  if (searchEl) searchEl.value = '';
+  renderList();
+}
+
+// ── KEYBOARD SHORTCUTS ──
+const NAV_SCREENS = ['companies','campaigns','dashboard','files','duplicates','settings'];
+document.addEventListener('keydown', function(e) {
+  const tag = document.activeElement.tagName.toLowerCase();
+  const typing = ['input','textarea','select'].includes(tag);
+
+  // Esc — close any open modal
+  if (e.key === 'Escape') {
+    const openModal = document.querySelector('.modal-overlay.open');
+    if (openModal) { openModal.classList.remove('open'); return; }
+  }
+
+  // Block shortcuts while typing
+  if (typing) return;
+
+  const meta = e.metaKey || e.ctrlKey;
+
+  // Cmd/Ctrl+K — search focus
+  if (meta && e.key === 'k') {
+    e.preventDefault();
+    const activeScreen = document.querySelector('.screen.active');
+    if (activeScreen) {
+      const s = activeScreen.querySelector('.search-input');
+      if (s) { s.focus(); s.select(); }
+    }
+    return;
+  }
+
+  // Cmd/Ctrl+N — new company (companies screen) or new campaign (campaigns screen)
+  if (meta && e.key === 'n') {
+    e.preventDefault();
+    const activeId = document.querySelector('.screen.active')?.id;
+    if (activeId === 'screen-companies')  openAddCompanyModal();
+    if (activeId === 'screen-campaigns')  openNewCampaignModal();
+    return;
+  }
+
+  // Cmd/Ctrl+E — download report
+  if (meta && e.key === 'e') {
+    e.preventDefault();
+    downloadReport();
+    return;
+  }
+
+  if (meta) return; // don't intercept other Cmd combos
+
+  // Number keys — navigate screens
+  if (['1','2','3','4','5','6'].includes(e.key)) {
+    const idx = parseInt(e.key) - 1;
+    const screen = NAV_SCREENS[idx];
+    if (!screen) return;
+    const navItems = document.querySelectorAll('.nav-item');
+    if (navItems[idx]) setNav(navItems[idx], screen);
+    return;
+  }
+
+  // ? — open shortcuts modal
+  if (e.key === '?') {
+    openShortcutsModal();
+    return;
+  }
+});
 
 
 // ── SUPABASE ──
