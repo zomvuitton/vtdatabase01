@@ -2052,8 +2052,14 @@ function saveCredentials() {
   const p = document.getElementById('set-password').value;
   const msg = document.getElementById('credSaveMsg');
   if (!u) { msg.textContent = 'Kullanıcı adı boş olamaz.'; return; }
+  // usersData içindeki kaydı da güncelle (login için kritik)
+  const userIdx = usersData.findIndex(x => x.username === currentUser.username);
   if (u) currentUser.username = u;
   if (p) currentUser.password = p;
+  if (userIdx !== -1) {
+    usersData[userIdx].username = currentUser.username;
+    if (p) usersData[userIdx].password = currentUser.password;
+  }
   document.getElementById('settingsUsername').textContent = currentUser.username;
   document.getElementById('set-password').value = '';
   saveToStorage();
@@ -2972,12 +2978,12 @@ async function handleFileUpload(input) {
       try {
         const filePath = Date.now() + '_' + entry.originalName.replace(/[^a-zA-Z0-9._-]/g, '_');
         const res = await fetch(
-          SURL + '/storage/v1/object/harman-files/' + filePath,
+          SUPA_URL + '/storage/v1/object/harman-files/' + filePath,
           {
             method: 'POST',
             headers: {
-              'apikey': SKEY,
-              'Authorization': 'Bearer ' + SKEY,
+              'apikey': SUPA_KEY,
+              'Authorization': 'Bearer ' + SUPA_KEY,
               'Content-Type': entry._file.type || 'application/octet-stream',
               'x-upsert': 'true',
             },
@@ -2985,7 +2991,7 @@ async function handleFileUpload(input) {
           }
         );
         if (res.ok) {
-          entry.publicUrl = SURL + '/storage/v1/object/public/harman-files/' + filePath;
+          entry.publicUrl = SUPA_URL + '/storage/v1/object/public/harman-files/' + filePath;
           uploaded++;
         }
       } catch(e) {
@@ -3147,7 +3153,7 @@ function renderCampList() {
 function selectCampaign(id) {
   selectedCampId = id;
   renderCampList();
-  const c   = campaigns.find(x => x.id === id);
+  const c   = campaigns.find(x => String(x.id) === String(id));
   const col = document.getElementById('campDetailCol');
   const total  = c.sends.length;
   const pos    = c.sends.filter(s => s.response === 'positive').length;
@@ -3533,7 +3539,7 @@ function deleteCompanyById(id) {
 
 // ── EDIT CAMPAIGN ──
 function openEditCampaignModal(id) {
-  const camp = campaigns.find(x => x.id === id);
+  const camp = campaigns.find(x => String(x.id) === String(id));
   if (!camp) return;
   selectedCampId = id;
   document.getElementById('ec-camp-name').value    = camp.name;
@@ -3551,7 +3557,7 @@ function closeEditCampModal() {
 function saveEditCampaign() {
   const name = document.getElementById('ec-camp-name').value.trim();
   if (!name) { document.getElementById('ec-camp-name').focus(); return; }
-  const camp = campaigns.find(x => x.id === selectedCampId);
+  const camp = campaigns.find(x => String(x.id) === String(selectedCampId));
   if (!camp) return;
   camp.name    = name;
   camp.subject = document.getElementById('ec-camp-subject').value.trim();
@@ -3565,10 +3571,10 @@ function saveEditCampaign() {
 }
 
 function deleteCampaign() {
-  const camp = campaigns.find(x => x.id === selectedCampId);
+  const camp = campaigns.find(x => String(x.id) === String(selectedCampId));
   if (!camp) return;
   if (!confirm(camp.name + ' silinsin mi?')) return;
-  const idx = campaigns.findIndex(x => x.id === selectedCampId);
+  const idx = campaigns.findIndex(x => String(x.id) === String(selectedCampId));
   campaigns.splice(idx, 1);
   saveToStorage();
   supabaseDelete('campaigns', selectedCampId);
@@ -3659,6 +3665,10 @@ function renderSectorChart() {
   const counts = {};
   companies.forEach(c => { counts[c.sector] = (counts[c.sector] || 0) + 1; });
   const sorted = Object.entries(counts).sort((a,b) => b[1]-a[1]).slice(0,6);
+  if (!sorted.length) {
+    document.getElementById('sectorChart').innerHTML = '<div style="color:var(--muted);font-size:12px;padding:8px 0">Veri yok</div>';
+    return;
+  }
   const max = sorted[0][1];
   const colors = ['#d4d4d4','#a0a0a0','#c8c8c8','#b0b0b0','#909090','#787878'];
 
@@ -3801,7 +3811,7 @@ async function saveToStorage() {
         sector:       co.sector || null,
         city:         co.city   || null,
         data_quality: co.quality  || 'incomplete',
-        status:       co.response === 'positive' ? 'active' : 'active',
+        status:       co.response === 'positive' ? 'active' : co.response === 'negative' ? 'inactive' : 'pending',
         notes:        JSON.stringify({ response: co.response, contacts: co.contacts, sources: co.sources, history: co.history }),
       }));
       const db = await supa.from('companies');
