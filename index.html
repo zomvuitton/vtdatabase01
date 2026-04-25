@@ -2928,9 +2928,14 @@ function deleteSelectedFile() {
   // Also delete from Storage if has publicUrl
   if (f && f.publicUrl && supaOk) {
     const path = f.publicUrl.split('/harman-files/')[1];
-    if (path) fetch(SUPA_URL + '/storage/v1/object/harman-files/' + path, {
+    if (path) fetch(SUPA_URL + '/storage/v1/object/harman-files', {
       method: 'DELETE',
-      headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY }
+      headers: {
+        'apikey': SUPA_KEY,
+        'Authorization': 'Bearer ' + SUPA_KEY,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ prefixes: [path] }),
     }).catch(()=>{});
   }
   document.getElementById('fileDetailModal').classList.remove('open');
