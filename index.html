@@ -1209,6 +1209,133 @@
     flex-shrink: 0;
   }
   .copy-btn:hover { color: var(--text); background: var(--surface3); }
+
+  /* ── LIGHT THEME ── */
+  :root.light {
+    --bg:       #f2f2f2;
+    --surface:  #ffffff;
+    --surface2: #ebebeb;
+    --surface3: #e0e0e0;
+    --border:   rgba(0,0,0,0.09);
+    --accent:   #1a1a1a;
+    --accent2:  #444444;
+    --green:    #2a7a4b;
+    --red:      #a03030;
+    --amber:    #906020;
+    --text:     #1a1a1a;
+    --muted:    #888888;
+    --muted2:   #555555;
+  }
+  :root.light .modal-overlay { background: rgba(0,0,0,0.4); }
+  :root.light .kpi-glow { opacity: 0.08; }
+  :root.light canvas { filter: invert(1) hue-rotate(180deg); }
+
+  /* ── THEME TOGGLE ── */
+  .theme-btn {
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 16px;
+    display: flex; align-items: center; justify-content: center;
+    transition: color .15s, background .15s;
+  }
+  .theme-btn:hover { background: var(--surface2); color: var(--text); }
+
+  /* ── NOTIFICATION PANEL ── */
+  .notif-bell {
+    position: relative;
+  }
+  .notif-badge {
+    position: absolute;
+    top: 4px; right: 4px;
+    background: var(--red);
+    color: #fff;
+    font-size: 9px;
+    font-weight: 700;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    pointer-events: none;
+    font-family: var(--font-mono);
+    opacity: 0;
+    transition: opacity .15s;
+  }
+  .notif-badge.visible { opacity: 1; }
+
+  .notif-panel {
+    position: fixed;
+    top: 0; right: 0;
+    width: 320px;
+    height: 100vh;
+    background: var(--surface);
+    border-left: 1px solid var(--border);
+    z-index: 500;
+    display: flex;
+    flex-direction: column;
+    transform: translateX(100%);
+    transition: transform .25s cubic-bezier(0.16,1,0.3,1);
+    box-shadow: -8px 0 32px rgba(0,0,0,0.3);
+  }
+  .notif-panel.open { transform: translateX(0); }
+
+  .notif-panel-header {
+    padding: 20px 20px 14px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+
+  .notif-item {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    transition: background .12s;
+    cursor: default;
+  }
+  .notif-item:hover { background: var(--surface2); }
+  .notif-item.unread { background: rgba(255,255,255,0.03); }
+  .notif-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+  .notif-text { font-size: 12px; color: var(--muted2); line-height: 1.5; flex: 1; }
+  .notif-text strong { color: var(--text); font-weight: 500; }
+  .notif-time { font-size: 10px; color: var(--muted); white-space: nowrap; flex-shrink: 0; }
+
+  /* ── FILE TAG ACTIVE ── */
+  .file-tag {
+    cursor: pointer;
+    transition: background .12s, color .12s;
+  }
+  .file-tag:hover { background: var(--surface2); color: var(--text); }
+  .file-tag.tag-active {
+    background: rgba(255,255,255,0.10);
+    color: var(--accent);
+    border: 1px solid rgba(255,255,255,0.2);
+  }
+
+  /* ── COMPANY NOTES ── */
+  .notes-area {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    padding: 10px 13px;
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    outline: none;
+    resize: vertical;
+    min-height: 72px;
+    line-height: 1.6;
+    transition: border-color .15s;
+  }
+  .notes-area:focus { border-color: var(--accent); }
+  .notes-area::placeholder { color: var(--muted); }
 </style>
 </head>
 <body>
@@ -1288,6 +1415,14 @@ window.dbgLog = function(msg) {
     </div>
 
     <div class="sidebar-spacer"></div>
+
+    <div class="nav-item notif-bell" id="notifBtn" onclick="toggleNotifPanel()">
+      🔔
+      <div class="tooltip">Bildirimler</div>
+      <div class="notif-badge" id="notifBadge">0</div>
+    </div>
+
+    <button class="theme-btn" id="themeBtn" onclick="toggleTheme()" title="Tema Değiştir">🌙</button>
 
     <div class="nav-item" onclick="setNav(this,'settings')">
       ⚙️
@@ -1594,6 +1729,20 @@ window.dbgLog = function(msg) {
         </div>
       </div>
     </div>
+
+    <!-- NOTIFICATION PANEL -->
+    <div class="notif-panel" id="notifPanel">
+      <div class="notif-panel-header">
+        <span style="font-family:var(--font-head);font-size:15px;font-weight:700">Bildirimler</span>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button onclick="clearAllNotifs()" style="background:none;border:none;color:var(--muted);font-size:11px;font-family:var(--font-mono);cursor:pointer;padding:4px 8px;border-radius:6px" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted)'">Tümünü Sil</button>
+          <button onclick="toggleNotifPanel()" style="background:none;border:none;color:var(--muted2);cursor:pointer;font-size:16px;width:28px;height:28px;border-radius:7px;display:flex;align-items:center;justify-content:center" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted2)'">✕</button>
+        </div>
+      </div>
+      <div id="notifList" style="flex:1;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--surface3) transparent"></div>
+    </div>
+    <!-- NOTIF BACKDROP -->
+    <div id="notifBackdrop" onclick="toggleNotifPanel()" style="position:fixed;inset:0;z-index:499;display:none"></div>
 
     <!-- MODAL: Klavye Kısayolları -->
     <div class="modal-overlay" id="shortcutsModal" onclick="if(event.target===this)closeShortcutsModal()">
@@ -1921,6 +2070,11 @@ window.dbgLog = function(msg) {
             <button type="button" class="btn btn-ghost" style="font-size:11px;padding:7px 12px" onclick="addEditContact('email')">+ Mail</button>
             <button type="button" class="btn btn-ghost" style="font-size:11px;padding:7px 12px" onclick="addEditContact('phone')">+ Telefon</button>
           </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Notlar</label>
+          <textarea class="notes-area" id="ec-notes" placeholder="Şirketle ilgili notlarınızı buraya ekleyin..."></textarea>
         </div>
 
         <div class="modal-actions" style="justify-content:space-between">
@@ -2736,10 +2890,12 @@ function addCompany() {
     contacts,
     sources:  ['Manuel Giriş'],
     history:  [],
+    notes:    '',
   };
 
   companies.unshift(newCompany);
   saveToStorage();
+  pushNotif(`<strong>${name}</strong> eklendi`, '🏢');
   closeAddCompanyModal();
   ['ac-name','ac-domain','ac-sector','ac-city','ac-email','ac-phone'].forEach(id => document.getElementById(id).value = '');
   renderList();
@@ -2806,32 +2962,51 @@ function handleCSVImport(input) {
 
 // ── RAPOR İNDİR ──
 function downloadReport() {
-  const total    = companies.length;
-  const positive = companies.filter(c => c.response === 'positive').length;
-  const negative = companies.filter(c => c.response === 'negative').length;
-  const dirty    = companies.filter(c => c.quality  === 'dirty').length;
-  const incomplete = companies.filter(c => c.quality === 'incomplete').length;
-  const none     = companies.filter(c => c.response === 'none').length;
-  const date     = new Date().toLocaleDateString('tr-TR');
+  const total      = companies.length;
+  const positive   = companies.filter(c => c.response === 'positive').length;
+  const negative   = companies.filter(c => c.response === 'negative').length;
+  const dirty      = companies.filter(c => c.quality  === 'dirty').length;
+  const incomplete = companies.filter(c => c.quality  === 'incomplete').length;
+  const none       = companies.filter(c => c.response === 'none').length;
+  const date       = new Date().toLocaleDateString('tr-TR');
 
-  const rows = companies.map(c => {
+  // Helper: escape CSV field
+  const esc = v => {
+    const s = String(v == null ? '' : v);
+    return s.includes(',') || s.includes('"') || s.includes('\n')
+      ? '"' + s.replace(/"/g, '""') + '"'
+      : s;
+  };
+
+  // Section 1: Summary
+  const summary =
+    `CRM Raporu,${date}\n\n` +
+    `ÖZET\n` +
+    `Toplam Şirket,${total}\n` +
+    `Olumlu Dönüş,${positive},%${total ? Math.round(positive/total*100) : 0}\n` +
+    `Olumsuz Dönüş,${negative},%${total ? Math.round(negative/total*100) : 0}\n` +
+    `Dönüş Yok,${none}\n` +
+    `Kirli Veri,${dirty}\n` +
+    `Eksik Veri,${incomplete}\n\n`;
+
+  // Section 2: Company list
+  const companyHeader = `ŞİRKET LİSTESİ\nAd,Sektör,Şehir,Domain,Email,Telefon,Kalite,Dönüş,Notlar\n`;
+  const companyRows = companies.map(c => {
     const email = c.contacts.find(x => x.type==='email');
     const phone = c.contacts.find(x => x.type==='phone');
-    return [c.name, c.sector, c.city, c.domain, email?email.value:'', phone?phone.value:'', c.quality, c.response].join(',');
+    return [c.name, c.sector, c.city, c.domain||'', email?email.value:'', phone?phone.value:'', c.quality, c.response, c.notes||'']
+      .map(esc).join(',');
   }).join('\n');
 
-  const csv = `CRM Raporu - ${date}\n\n`
-    + `Özet\n`
-    + `Toplam Şirket,${total}\n`
-    + `Olumlu Dönüş,${positive}\n`
-    + `Olumsuz Dönüş,${negative}\n`
-    + `Dönüş Yok,${none}\n`
-    + `Kirli Veri,${dirty}\n`
-    + `Eksik Veri,${incomplete}\n\n`
-    + `Şirket Listesi\n`
-    + `Ad,Sektör,Şehir,Domain,Email,Telefon,Kalite,Dönüş\n`
-    + rows;
+  // Section 3: Campaign history
+  const historyHeader = `\n\nKAMPANYA GEÇMİŞİ\nŞirket,Kampanya,Dönüş,Not,Tarih\n`;
+  const historyRows = companies.flatMap(c =>
+    (c.history || []).map(h =>
+      [c.name, h.campaign, h.response, h.note||'', h.date].map(esc).join(',')
+    )
+  ).join('\n');
 
+  const csv = summary + companyHeader + companyRows + historyHeader + historyRows;
   const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement('a');
@@ -2839,6 +3014,7 @@ function downloadReport() {
   a.download = `crm-rapor-${date.replace(/\./g,'-')}.csv`;
   a.click();
   URL.revokeObjectURL(url);
+  pushNotif('Rapor indirildi', '↓');
 }
 
 // ── FILES DATA ──
@@ -2859,6 +3035,7 @@ let filesData = [
 
 let activeFileType  = 'all';
 let activeFileYear  = 'all';
+let activeFileTag   = 'all';
 let fileSearchQuery = '';
 let selectedFileId  = null;
 let nextId          = 200;
@@ -2895,14 +3072,20 @@ function filterFiles(val) {
   renderFiles();
 }
 
+function setFileTag(tag) {
+  activeFileTag = (activeFileTag === tag) ? 'all' : tag;
+  renderFiles();
+}
+
 function getFilteredFiles() {
   return filesData.filter(f => {
     const matchType = activeFileType === 'all' || f.type === activeFileType;
     const matchYear = activeFileYear === 'all' || String(f.year) === activeFileYear;
+    const matchTag  = activeFileTag  === 'all' || f.tags.includes(activeFileTag);
     const matchSearch = !fileSearchQuery ||
       f.name.toLowerCase().includes(fileSearchQuery) ||
       f.tags.some(t => t.includes(fileSearchQuery));
-    return matchType && matchYear && matchSearch;
+    return matchType && matchYear && matchTag && matchSearch;
   });
 }
 
@@ -2911,9 +3094,25 @@ function renderFiles() {
   const list = getFilteredFiles();
   document.getElementById('fcnt-all').textContent = filesData.length;
 
+  // Active tag chip in toolbar
+  let tagChipEl = document.getElementById('activeTagChip');
+  if (!tagChipEl) {
+    tagChipEl = document.createElement('div');
+    tagChipEl.id = 'activeTagChip';
+    tagChipEl.style.cssText = 'display:none;align-items:center;gap:5px;padding:4px 11px;border-radius:20px;font-size:11px;font-family:var(--font-mono);background:rgba(255,255,255,0.08);border:1px solid var(--accent);color:var(--accent);cursor:pointer;white-space:nowrap';
+    tagChipEl.onclick = () => setFileTag('all');
+    document.querySelector('.files-toolbar').appendChild(tagChipEl);
+  }
+  if (activeFileTag !== 'all') {
+    tagChipEl.style.display = 'flex';
+    tagChipEl.innerHTML = `🏷 ${activeFileTag} <span style="opacity:.6;margin-left:2px">✕</span>`;
+  } else {
+    tagChipEl.style.display = 'none';
+  }
+
   const cardsHTML = list.map(f => {
     const emoji = fileTypeEmoji[f.type] || '📁';
-    const tagsHTML = f.tags.map(t => `<span class="file-tag">${t}</span>`).join('');
+    const tagsHTML = f.tags.map(t => `<span class="file-tag${activeFileTag===t?' tag-active':''}" onclick="event.stopPropagation();setFileTag('${t}')">${t}</span>`).join('');
     const hasDownload = !!(f.publicUrl || f.objectUrl);
     return `
     <div class="file-card" onclick="openFileModal('${f.id}')">
@@ -2940,9 +3139,13 @@ function renderFiles() {
       <div class="drop-sub">PPTX, PSD, PDF, AI, Sketch — maks. 200 MB</div>
     </div>`;
 
-  grid.innerHTML = (list.length === 0
-    ? `<div style="grid-column:1/-1;text-align:center;color:var(--muted);padding:40px;font-size:12px">Sonuç bulunamadı</div>`
-    : cardsHTML) + dropZone;
+  const emptyHTML = `<div style="grid-column:1/-1;text-align:center;color:var(--muted);padding:48px 20px;font-size:12px">
+    <div style="font-size:36px;opacity:.3;margin-bottom:12px">🗂️</div>
+    <div style="margin-bottom:14px">${activeFileTag !== 'all' ? `"${activeFileTag}" etiketli dosya bulunamadı.` : 'Sonuç bulunamadı.'}</div>
+    ${activeFileTag !== 'all' ? `<button onclick="setFileTag('all')" class="btn btn-ghost" style="margin:0 auto;font-size:11px">✕ Etiketi Temizle</button>` : ''}
+  </div>`;
+
+  grid.innerHTML = (list.length === 0 ? emptyHTML : cardsHTML) + dropZone;
 }
 
 function openFileModal(id) {
@@ -3119,6 +3322,7 @@ async function handleFileUpload(input) {
     saveToStorage();
     renderFiles();
     showToast('✓ ' + uploaded + '/' + newEntries.length + ' dosya Supabase yüklendi');
+    pushNotif(`<strong>${uploaded}</strong> dosya Supabase'e yüklendi`, '☁️');
   } else {
     showToast('✓ ' + uploadedFiles.length + ' dosya eklendi (yerel)');
   }
@@ -3451,14 +3655,14 @@ function renderList() {
       <div class="company-info">
         <div class="company-name">${highlight(c.name)}</div>
         <div class="company-meta">
-          <span>📍 ${c.city}</span>
+          <span>📍 ${highlight(c.city)}</span>
           <span>✉️ ${emails}</span>
           <span>📞 ${phones}</span>
         </div>
       </div>
       <div class="company-right">
         ${responseBadge(c.response, c.quality)}
-        <div class="sector-tag">${c.sector}</div>
+        <div class="sector-tag">${highlight(c.sector)}</div>
       </div>
     </div>`;
   }).join('');
@@ -3469,7 +3673,7 @@ function renderList() {
 function highlight(text) {
   if (!searchQuery) return text;
   const re = new RegExp(`(${searchQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-  return text.replace(re, '<mark style="background:rgba(91,110,245,0.3);color:var(--accent2);border-radius:3px;padding:0 2px">$1</mark>');
+  return text.replace(re, '<mark style="background:rgba(212,212,212,0.25);color:var(--text);border-radius:3px;padding:0 2px;outline:1px solid rgba(255,255,255,0.15)">$1</mark>');
 }
 
 function updateCounts() {
@@ -3563,6 +3767,13 @@ function renderCompanyDetail(id) {
         <div style="display:flex;gap:6px;flex-wrap:wrap">${sourcesHTML}</div>
       </div>
       <div class="detail-section">
+        <div class="detail-section-title" style="display:flex;align-items:center;justify-content:space-between">
+          Notlar
+          <button onclick="saveCompanyNote('${co.id}')" class="btn btn-ghost" style="font-size:10px;padding:4px 10px;height:24px">Kaydet</button>
+        </div>
+        <textarea class="notes-area" id="company-notes-${co.id}" placeholder="Not ekle...">${co.notes || ''}</textarea>
+      </div>
+      <div class="detail-section">
         <div class="detail-section-title">Kampanya Geçmişi</div>
         ${historyHTML}
       </div>
@@ -3583,6 +3794,7 @@ function openEditCompanyModal(id) {
   document.getElementById('ec-city').value     = co.city   || '';
   document.getElementById('ec-quality').value  = co.quality;
   document.getElementById('ec-response').value = co.response;
+  document.getElementById('ec-notes').value    = co.notes  || '';
   editContactsTemp = co.contacts.map(ct => ({...ct}));
   renderEditContacts();
   document.getElementById('editCompanyModal').classList.add('open');
@@ -3622,7 +3834,9 @@ function saveEditCompany() {
   co.quality  = document.getElementById('ec-quality').value;
   co.response = document.getElementById('ec-response').value;
   co.contacts = editContactsTemp.filter(ct => ct.value.trim());
+  co.notes    = document.getElementById('ec-notes').value.trim();
   saveToStorage();
+  pushNotif(`<strong>${co.name}</strong> güncellendi`, '✎');
   closeEditCompanyModal();
   renderList();
   renderCompanyDetail(selectedId);
@@ -3648,9 +3862,11 @@ function deleteCompany() {
 function deleteCompanyById(id) {
   const idx = companies.findIndex(x => String(x.id) === String(id));
   if (idx === -1) return;
+  const deletedName = companies[idx].name;
   companies.splice(idx, 1);
   saveToStorage();
   supabaseDelete('companies', id);
+  pushNotif(`<strong>${deletedName}</strong> silindi`, '🗑');
   selectedId = null;
   renderList();
   document.getElementById('detailPanel').innerHTML = `
@@ -3921,7 +4137,81 @@ function renderSourceTable() {
 function openShortcutsModal()  { document.getElementById('shortcutsModal').classList.add('open'); }
 function closeShortcutsModal() { document.getElementById('shortcutsModal').classList.remove('open'); }
 
-// ── COPY TO CLIPBOARD ──
+// ── THEME TOGGLE ──
+function toggleTheme() {
+  const isLight = document.documentElement.classList.toggle('light');
+  document.getElementById('themeBtn').textContent = isLight ? '☀️' : '🌙';
+  try { localStorage.setItem('harman_theme', isLight ? 'light' : 'dark'); } catch(e) {}
+}
+// Restore saved theme on load
+try {
+  if (localStorage.getItem('harman_theme') === 'light') {
+    document.documentElement.classList.add('light');
+    document.addEventListener('DOMContentLoaded', () => {
+      const btn = document.getElementById('themeBtn');
+      if (btn) btn.textContent = '☀️';
+    });
+  }
+} catch(e) {}
+
+// ── NOTIFICATIONS ──
+let notificationsData = [];
+let notifPanelOpen = false;
+let unreadCount = 0;
+
+function pushNotif(msg, icon = '🔔') {
+  const now = new Date();
+  const timeStr = now.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+  notificationsData.unshift({ msg, icon, time: timeStr, unread: true });
+  if (notificationsData.length > 50) notificationsData.pop();
+  unreadCount++;
+  const badge = document.getElementById('notifBadge');
+  if (badge) {
+    badge.textContent = unreadCount > 9 ? '9+' : unreadCount;
+    badge.classList.add('visible');
+  }
+  if (notifPanelOpen) renderNotifList();
+}
+
+function toggleNotifPanel() {
+  notifPanelOpen = !notifPanelOpen;
+  document.getElementById('notifPanel').classList.toggle('open', notifPanelOpen);
+  document.getElementById('notifBackdrop').style.display = notifPanelOpen ? 'block' : 'none';
+  if (notifPanelOpen) {
+    // Mark all as read
+    notificationsData.forEach(n => n.unread = false);
+    unreadCount = 0;
+    const badge = document.getElementById('notifBadge');
+    if (badge) badge.classList.remove('visible');
+    renderNotifList();
+  }
+}
+
+function renderNotifList() {
+  const el = document.getElementById('notifList');
+  if (!el) return;
+  if (!notificationsData.length) {
+    el.innerHTML = `<div style="text-align:center;color:var(--muted);padding:48px 20px;font-size:12px">
+      <div style="font-size:32px;opacity:.3;margin-bottom:10px">🔔</div>
+      <div>Henüz bildirim yok</div>
+    </div>`;
+    return;
+  }
+  el.innerHTML = notificationsData.map(n => `
+    <div class="notif-item ${n.unread ? 'unread' : ''}">
+      <div class="notif-icon">${n.icon}</div>
+      <div class="notif-text">${n.msg}</div>
+      <div class="notif-time">${n.time}</div>
+    </div>`).join('');
+}
+
+function clearAllNotifs() {
+  notificationsData = [];
+  unreadCount = 0;
+  const badge = document.getElementById('notifBadge');
+  if (badge) badge.classList.remove('visible');
+  renderNotifList();
+}
 function copyToClipboard(text) {
   navigator.clipboard.writeText(text).then(() => {
     showToast('✓ Kopyalandı: ' + text);
@@ -3939,6 +4229,16 @@ function copyToClipboard(text) {
 }
 
 // ── FILTER RESET ──
+function saveCompanyNote(id) {
+  const co = companies.find(x => String(x.id) === String(id));
+  if (!co) return;
+  const el = document.getElementById('company-notes-' + id);
+  if (!el) return;
+  co.notes = el.value.trim();
+  saveToStorage();
+  showToast('✓ Not kaydedildi');
+}
+
 function resetFilter() {
   activeFilter = 'all';
   searchQuery  = '';
