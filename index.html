@@ -1786,7 +1786,7 @@ window.dbgLog = function(msg) {
             <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:12px">🔍</span>
             <input class="search-input" style="padding-left:30px;font-size:12px;width:220px" placeholder="Dosya ara..." oninput="filterFiles(this.value)" id="fileSearchInput">
           </div>
-          <button class="btn btn-primary" onclick="document.getElementById('fileUploadInput').click()">↑ Dosya Yükle</button>
+          <button class="btn btn-primary" onclick="if(!can('files','add')){noPermToast();return;}document.getElementById('fileUploadInput').click()">↑ Dosya Yükle</button>
           <input type="file" id="fileUploadInput" style="display:none" multiple accept=".pptx,.psd,.pdf,.key,.ai,.sketch" onchange="handleFileUpload(this)">
         </div>
       </div>
@@ -4043,6 +4043,7 @@ function addEditContact(type) {
 }
 
 function saveEditCompany() {
+  if (!can('companies','edit')) { noPermToast(); return; }
   const name = document.getElementById('ec-name').value.trim();
   if (!name) { document.getElementById('ec-name').focus(); return; }
   const co = companies.find(x => String(x.id) === String(selectedId));
@@ -5042,6 +5043,11 @@ function deleteRole(roleId) {
   usersData.forEach(u => { if (u.role === roleId) u.role = 'viewer'; });
   saveToStorage();
   saveRolesToStorage();
+  // Delete from Supabase
+  fetch(`${SUPA_URL}/rest/v1/harman_roles?id=eq.${roleId}`, {
+    method: 'DELETE',
+    headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}` }
+  }).catch(console.warn);
   selectedRoleId = null;
   document.getElementById('roleDetail').innerHTML = `
     <div style="height:100%;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;color:var(--muted)">
@@ -5073,6 +5079,15 @@ function addRole() {
     sel.appendChild(opt);
   }
   saveRolesToStorage();
+  // Insert to Supabase immediately
+  const newRole = rolesData.find(r => r.id === id);
+  if (newRole) {
+    fetch(`${SUPA_URL}/rest/v1/harman_roles`, {
+      method: 'POST',
+      headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ id, name, is_system: false, permissions: newRole.permissions })
+    }).catch(console.warn);
+  }
   closeAddRoleModal();
   renderRoles();
   selectRole(id);
@@ -5081,6 +5096,44 @@ function addRole() {
 
 function saveRolesToStorage() {
   try { localStorage.setItem('harman_roles', JSON.stringify(rolesData)); } catch(e) {}
+  // Upsert all non-system roles to Supabase
+  const toSave = rolesData.filter(r => !r.isSystem);
+  toSave.forEach(r => {
+    fetch(`${SUPA_URL}/rest/v1/harman_roles`, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPA_KEY,
+        'Authorization': `Bearer ${SUPA_KEY}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'resolution=merge-duplicates,return=minimal'
+      },
+      body: JSON.stringify({ id: r.id, name: r.name, is_system: false, permissions: r.permissions })
+    }).catch(console.warn);
+  });
+}
+
+async function loadRolesFromSupabase() {
+  try {
+    const res = await fetch(`${SUPA_URL}/rest/v1/harman_roles?select=*`, {
+      headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}` }
+    });
+    if (!res.ok) throw new Error('Supabase roles fetch failed');
+    const rows = await res.json();
+    if (!rows.length) return; // Nothing in Supabase yet
+    const sysRoles = rolesData.filter(r => r.isSystem);
+    const nonSystem = rows.filter(r => !r.is_system).map(r => ({
+      id: r.id,
+      name: r.name,
+      isSystem: false,
+      permissions: r.permissions || {}
+    }));
+    rolesData = [...sysRoles, ...nonSystem];
+    // Keep localStorage in sync
+    try { localStorage.setItem('harman_roles', JSON.stringify(rolesData)); } catch(e) {}
+  } catch(e) {
+    // Fallback to localStorage
+    loadRolesFromStorage();
+  }
 }
 
 function loadRolesFromStorage() {
@@ -5090,7 +5143,7 @@ function loadRolesFromStorage() {
     const parsed = JSON.parse(saved);
     const sysRoles  = rolesData.filter(r => r.isSystem);
     const nonSystem = parsed.filter(r => !r.isSystem);
-    rolesData = [...sysRoles, ...nonSystem];
+    if (nonSystem.length) rolesData = [...sysRoles, ...nonSystem];
   } catch(e) {}
 }
 
@@ -5361,8 +5414,9 @@ function showToast(msg) {
 // Clear old blacklist storage key (no longer used)
 try { localStorage.removeItem('harman_dup_blacklist'); } catch(e) {}
 
-loadRolesFromStorage();
+loadRolesFromStorage(); // Sync fallback first
 loadFromStorage().then(() => renderList());
+loadRolesFromSupabase(); // Then async Supabase override
 </script>
 </body>
 </html>
