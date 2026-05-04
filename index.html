@@ -1846,7 +1846,9 @@ window.dbgLog = function(msg) {
         <div class="shortcut-row"><span class="shortcut-desc">Dashboard</span><span class="shortcut-keys"><span class="kbd">3</span></span></div>
         <div class="shortcut-row"><span class="shortcut-desc">Dosyalar</span><span class="shortcut-keys"><span class="kbd">4</span></span></div>
         <div class="shortcut-row"><span class="shortcut-desc">Duplicate'ler</span><span class="shortcut-keys"><span class="kbd">5</span></span></div>
-        <div class="shortcut-row"><span class="shortcut-desc">Ayarlar</span><span class="shortcut-keys"><span class="kbd">6</span></span></div>
+        <div class="shortcut-row"><span class="shortcut-desc">Öneriler</span><span class="shortcut-keys"><span class="kbd">6</span></span></div>
+        <div class="shortcut-row"><span class="shortcut-desc">Diğer ekranlar</span><span class="shortcut-keys"><span class="kbd">7</span> <span class="kbd">8</span> <span class="kbd">9</span></span></div>
+        <div style="font-size:10px;color:var(--muted);margin-top:4px;margin-bottom:8px">* Sayılar görünür ekran sırasına göre atanır</div>
 
         <div class="shortcut-section-title">Eylemler</div>
         <div class="shortcut-row"><span class="shortcut-desc">Aramaya odaklan</span><span class="shortcut-keys"><span class="kbd">⌘</span><span class="kbd-plus">+</span><span class="kbd">K</span></span></div>
@@ -3891,8 +3893,14 @@ const SCREEN_PERMS = {
 };
 
 function setNav(el, screen) {
-  const res = SCREEN_PERMS[screen];
-  if (res && !can(res, 'view')) { noPermToast(); return; }
+  let allowed = true;
+  if (screen === 'roles') {
+    allowed = can('settings','manageUsers');
+  } else {
+    const res = SCREEN_PERMS[screen];
+    if (res) allowed = can(res, 'view');
+  }
+  if (!allowed) { noPermToast(); return; }
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   el.classList.add('active');
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -3908,23 +3916,18 @@ function setNav(el, screen) {
 }
 
 function applyNavPermissions() {
-  const screenToNav = {
-    companies:   'companies',
-    campaigns:   'campaigns',
-    files:       'files',
-    duplicates:  'duplicates',
-    suggestions: 'suggestions',
-    settings:    'settings',
-    roles:       'settings',
-  };
   document.querySelectorAll('.nav-item[onclick]').forEach(el => {
     const match = el.getAttribute('onclick').match(/setNav\(this,'(\w+)'\)/);
     if (!match) return;
     const screen = match[1];
-    const res = SCREEN_PERMS[screen];
-    if (res) {
-      el.style.display = can(res, 'view') ? '' : 'none';
+    let allowed = true;
+    if (screen === 'roles') {
+      allowed = can('settings','manageUsers');
+    } else {
+      const res = SCREEN_PERMS[screen];
+      if (res) allowed = can(res, 'view');
     }
+    el.style.display = allowed ? '' : 'none';
   });
 }
 
@@ -4643,13 +4646,15 @@ document.addEventListener('keydown', function(e) {
 
   if (meta) return; // don't intercept other Cmd combos
 
-  // Number keys — navigate screens
-  if (['1','2','3','4','5','6'].includes(e.key)) {
+  // Number keys — navigate visible screens only
+  if (['1','2','3','4','5','6','7','8','9'].includes(e.key)) {
+    // Only count visible nav items
+    const visibleNavItems = [...document.querySelectorAll('.nav-item[onclick]')]
+      .filter(el => el.style.display !== 'none');
     const idx = parseInt(e.key) - 1;
-    const screen = NAV_SCREENS[idx];
-    if (!screen) return;
-    const navItems = document.querySelectorAll('.nav-item');
-    if (navItems[idx]) setNav(navItems[idx], screen);
+    if (!visibleNavItems[idx]) return;
+    const match = visibleNavItems[idx].getAttribute('onclick').match(/setNav\(this,'(\w+)'\)/);
+    if (match) setNav(visibleNavItems[idx], match[1]);
     return;
   }
 
