@@ -2324,9 +2324,7 @@ function doLogin() {
     currentUser.role     = found.role || 'admin';
     document.getElementById('loginScreen').style.display = 'none';
     err.textContent = '';
-    // Show/hide roles nav based on permissions
-    const rolesNav = document.getElementById('nav-roles');
-    if (rolesNav) rolesNav.style.display = can('settings','view') ? '' : 'none';
+    applyNavPermissions();
   } else {
     err.textContent = 'Kullanıcı adı veya şifre hatalı';
     document.getElementById('loginPass').value = '';
@@ -2858,6 +2856,7 @@ function selectDup(id) {
 }
 
 function mergeDup(id) {
+  if (!can('duplicates','manage')) { noPermToast(); return; }
   if (window.dbgLog) dbgLog('===MERGE START id=' + id);
   const idx = duplicatesData.findIndex(x => String(x.id) === String(id));
   if (idx === -1) { if (window.dbgLog) dbgLog('  FAIL: dup not found'); return; }
@@ -2928,6 +2927,7 @@ function unresolve(id) {
 
 
 function scanDuplicates() {
+  if (!can('duplicates','view')) { noPermToast(); return; }
   const newDupes = [];
   // Only skip pairs already in the current duplicates list
   const seen = new Set(
@@ -3011,8 +3011,8 @@ function scanDuplicates() {
 }
 
 function autoMergeAll() {
+  if (!can('duplicates','manage')) { noPermToast(); return; }
   const toMerge = duplicatesData.filter(d => !d.resolved && d.score >= 90);
-  toMerge.forEach(d => {
     // Merge companies
     const master = companies.find(co => String(co.id) === String(d.masterId));
     const dup    = companies.find(co => String(co.id) === String(d.dupId));
@@ -3796,8 +3796,21 @@ function setFilter(filter, el) {
   renderList();
 }
 
+// Map screen names to permission resources
+const SCREEN_PERMS = {
+  companies:   'companies',
+  campaigns:   'campaigns',
+  files:       'files',
+  duplicates:  'duplicates',
+  suggestions: 'suggestions',
+  settings:    'settings',
+  roles:       'settings',
+  dashboard:   null, // always accessible
+};
+
 function setNav(el, screen) {
-  if (screen === 'roles' && !can('settings','view')) { noPermToast(); return; }
+  const res = SCREEN_PERMS[screen];
+  if (res && !can(res, 'view')) { noPermToast(); return; }
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   el.classList.add('active');
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -3809,6 +3822,27 @@ function setNav(el, screen) {
   if (screen === 'settings')    renderSettings();
   if (screen === 'suggestions') loadAndRenderSuggestions();
   if (screen === 'roles')       renderRoles();
+}
+
+function applyNavPermissions() {
+  const screenToNav = {
+    companies:   'companies',
+    campaigns:   'campaigns',
+    files:       'files',
+    duplicates:  'duplicates',
+    suggestions: 'suggestions',
+    settings:    'settings',
+    roles:       'settings',
+  };
+  document.querySelectorAll('.nav-item[onclick]').forEach(el => {
+    const match = el.getAttribute('onclick').match(/setNav\(this,'(\w+)'\)/);
+    if (!match) return;
+    const screen = match[1];
+    const res = SCREEN_PERMS[screen];
+    if (res) {
+      el.style.display = can(res, 'view') ? '' : 'none';
+    }
+  });
 }
 
 function filterCompanies(val) {
@@ -4064,6 +4098,7 @@ function saveEditCompany() {
 }
 
 function confirmDeleteCompany(id) {
+  if (!can('companies','delete')) { noPermToast(); return; }
   const co = companies.find(x => String(x.id) === String(id));
   if (!co) return;
   if (!confirm(co.name + ' silinsin mi? Bu işlem geri alınamaz.')) return;
