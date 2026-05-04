@@ -2313,6 +2313,42 @@ window.dbgLog = function(msg) {
 // ── AUTH ──
 let currentUser = { username: 'harman', password: 'databasedemo' };
 
+let rolesData = [
+  {
+    id: 'admin', name: 'Yönetici', isSystem: true,
+    permissions: {
+      companies:   { view:true,  add:true,  edit:true,  delete:true  },
+      campaigns:   { view:true,  add:true,  edit:true,  delete:true  },
+      files:       { view:true,  add:true,  edit:true,  delete:true  },
+      duplicates:  { view:true,  manage:true  },
+      suggestions: { view:true,  vote:true,  note:true,  delete:true  },
+      settings:    { view:true  },
+    }
+  },
+  {
+    id: 'editor', name: 'Editör', isSystem: false,
+    permissions: {
+      companies:   { view:true,  add:true,  edit:true,  delete:false },
+      campaigns:   { view:true,  add:true,  edit:true,  delete:false },
+      files:       { view:true,  add:true,  edit:true,  delete:false },
+      duplicates:  { view:true,  manage:false },
+      suggestions: { view:true,  vote:true,  note:true,  delete:false },
+      settings:    { view:false },
+    }
+  },
+  {
+    id: 'viewer', name: 'Görüntüleyici', isSystem: false,
+    permissions: {
+      companies:   { view:true,  add:false, edit:false, delete:false },
+      campaigns:   { view:true,  add:false, edit:false, delete:false },
+      files:       { view:true,  add:false, edit:false, delete:false },
+      duplicates:  { view:false, manage:false },
+      suggestions: { view:true,  vote:false, note:false, delete:false },
+      settings:    { view:false },
+    }
+  },
+];
+
 function doLogin() {
   const u = document.getElementById('loginUser').value.trim();
   const p = document.getElementById('loginPass').value;
@@ -3013,6 +3049,7 @@ function scanDuplicates() {
 function autoMergeAll() {
   if (!can('duplicates','manage')) { noPermToast(); return; }
   const toMerge = duplicatesData.filter(d => !d.resolved && d.score >= 90);
+  toMerge.forEach(d => {
     // Merge companies
     const master = companies.find(co => String(co.id) === String(d.masterId));
     const dup    = companies.find(co => String(co.id) === String(d.dupId));
@@ -4927,42 +4964,6 @@ const PERM_DEFS = {
   suggestions: { label: '💡 Öneriler',         actions: { view:'Görüntüle', vote:'Oy Ver', note:'Not Ekle', delete:'Sil' } },
   settings:    { label: '⚙️ Ayarlar',          actions: { view:'Görüntüle' } },
 };
-
-let rolesData = [
-  {
-    id: 'admin', name: 'Yönetici', isSystem: true,
-    permissions: {
-      companies:   { view:true,  add:true,  edit:true,  delete:true  },
-      campaigns:   { view:true,  add:true,  edit:true,  delete:true  },
-      files:       { view:true,  add:true,  edit:true,  delete:true  },
-      duplicates:  { view:true,  manage:true  },
-      suggestions: { view:true,  vote:true,  note:true,  delete:true  },
-      settings:    { view:true  },
-    }
-  },
-  {
-    id: 'editor', name: 'Editör', isSystem: false,
-    permissions: {
-      companies:   { view:true,  add:true,  edit:true,  delete:false },
-      campaigns:   { view:true,  add:true,  edit:true,  delete:false },
-      files:       { view:true,  add:true,  edit:true,  delete:false },
-      duplicates:  { view:true,  manage:false },
-      suggestions: { view:true,  vote:true,  note:true,  delete:false },
-      settings:    { view:false },
-    }
-  },
-  {
-    id: 'viewer', name: 'Görüntüleyici', isSystem: false,
-    permissions: {
-      companies:   { view:true,  add:false, edit:false, delete:false },
-      campaigns:   { view:true,  add:false, edit:false, delete:false },
-      files:       { view:true,  add:false, edit:false, delete:false },
-      duplicates:  { view:false, manage:false },
-      suggestions: { view:true,  vote:false, note:false, delete:false },
-      settings:    { view:false },
-    }
-  },
-];
 
 let selectedRoleId = null;
 
