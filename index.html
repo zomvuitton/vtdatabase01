@@ -3041,10 +3041,11 @@ function autoMergeAll() {
 }
 
 // ── ADD COMPANY MODAL ──
-function openAddCompanyModal()  { document.getElementById('addCompanyModal').classList.add('open'); }
+function openAddCompanyModal()  { if (!can('companies','add')) { noPermToast(); return; } document.getElementById('addCompanyModal').classList.add('open'); }
 function closeAddCompanyModal() { document.getElementById('addCompanyModal').classList.remove('open'); }
 
 function addCompany() {
+  if (!can('companies','add')) { noPermToast(); return; }
   const name   = document.getElementById('ac-name').value.trim();
   if (!name) { document.getElementById('ac-name').focus(); return; }
   const email  = document.getElementById('ac-email').value.trim();
@@ -3420,6 +3421,7 @@ function downloadFile() {
 }
 
 function saveFileEdit() {
+  if (!can('files','edit')) { noPermToast(); return; }
   const f = filesData.find(x => x.id === selectedFileId || String(x.id) === String(selectedFileId));
   if (!f) return;
   const name = document.getElementById('fmd-name').value.trim();
@@ -3469,6 +3471,7 @@ function deleteSelectedFile() {
 }
 
 async function handleFileUpload(input) {
+  if (!can('files','add')) { noPermToast(); return; }
   const uploadedFiles = Array.from(input.files);
   if (!uploadedFiles.length) return;
 
@@ -3540,6 +3543,7 @@ async function handleFileUpload(input) {
 }
 
 function handleFileDrop(event) {
+  if (!can('files','add')) { noPermToast(); return; }
   event.preventDefault();
   document.getElementById('dropZone').classList.remove('dragover');
   const dt = event.dataTransfer;
@@ -3742,11 +3746,12 @@ function selectCampaign(id) {
     </div>`;
 }
 
-function openNewCampaignModal()  { document.getElementById('newCampModal').classList.add('open'); }
+function openNewCampaignModal()  { if (!can('campaigns','add')) { noPermToast(); return; } document.getElementById('newCampModal').classList.add('open'); }
 function closeNewCampaignModal() { document.getElementById('newCampModal').classList.remove('open'); }
 function closeModalOutside(e)    { if (e.target === document.getElementById('newCampModal')) closeNewCampaignModal(); }
 
 function createCampaign() {
+  if (!can('campaigns','add')) { noPermToast(); return; }
   const name    = document.getElementById('newCampName').value.trim();
   const subject = document.getElementById('newCampSubject').value.trim();
   const body    = document.getElementById('newCampBody').value.trim();
@@ -3999,6 +4004,7 @@ function renderCompanyDetail(id) {
 let editContactsTemp = [];
 
 function openEditCompanyModal(id) {
+  if (!can('companies','edit')) { noPermToast(); return; }
   const co = companies.find(x => String(x.id) === String(id));
   if (!co) return;
   selectedId = id;
@@ -4093,6 +4099,7 @@ function deleteCompanyById(id) {
 
 // ── EDIT CAMPAIGN ──
 function openEditCampaignModal(id) {
+  if (!can('campaigns','edit')) { noPermToast(); return; }
   const camp = campaigns.find(x => String(x.id) === String(id));
   if (!camp) return;
   selectedCampId = id;
@@ -4109,6 +4116,7 @@ function closeEditCampModal() {
 }
 
 function saveEditCampaign() {
+  if (!can('campaigns','edit')) { noPermToast(); return; }
   const name = document.getElementById('ec-camp-name').value.trim();
   if (!name) { document.getElementById('ec-camp-name').focus(); return; }
   const camp = campaigns.find(x => String(x.id) === String(selectedCampId));
@@ -4125,6 +4133,7 @@ function saveEditCampaign() {
 }
 
 function deleteCampaign() {
+  if (!can('campaigns','delete')) { noPermToast(); return; }
   const camp = campaigns.find(x => String(x.id) === String(selectedCampId));
   if (!camp) return;
   if (!confirm(camp.name + ' silinsin mi?')) return;
@@ -4769,6 +4778,7 @@ function renderSuggDetail(id) {
 }
 
 async function castVote(suggId, voteType) {
+  if (!can('suggestions','vote')) { noPermToast(); return; }
   const existing = myVoteFor(suggId);
   try {
     if (existing) {
@@ -4811,6 +4821,7 @@ async function removeVote(suggId) {
 }
 
 async function addSuggNote(suggId) {
+  if (!can('suggestions','note')) { noPermToast(); return; }
   const input   = document.getElementById('suggNoteInput');
   const content = input?.value?.trim();
   if (!content) return;
