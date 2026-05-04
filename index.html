@@ -1503,6 +1503,10 @@ window.dbgLog = function(msg) {
       <div class="tooltip">Öneriler</div>
       <div class="notif-badge" id="suggBadge" style="display:none">0</div>
     </div>
+    <div class="nav-item" id="nav-roles" onclick="setNav(this,'roles')">
+      🎭
+      <div class="tooltip">Roller</div>
+    </div>
 
     <div class="sidebar-spacer"></div>
 
@@ -1798,16 +1802,6 @@ window.dbgLog = function(msg) {
           <select id="yearSelect" onchange="setFileYearSelect(this.value)"
             style="background:var(--surface2);border:1px solid var(--border);border-radius:20px;color:var(--muted2);font-family:var(--font-mono);font-size:11px;padding:5px 14px;outline:none;cursor:pointer;height:30px">
             <option value="all">Tüm Yıllar</option>
-              <option value="2025">2025</option>
-              <option value="2024">2024</option>
-              <option value="2023">2023</option>
-              <option value="2022">2022</option>
-              <option value="2021">2021</option>
-              <option value="2020">2020</option>
-              <option value="2019">2019</option>
-              <option value="2018">2018</option>
-              <option value="2017">2017</option>
-              <option value="2016">2016</option>
           </select>
         </div>
 
@@ -1911,6 +1905,11 @@ window.dbgLog = function(msg) {
           <input class="form-input" id="fmd-tags" placeholder="sunum, kurumsal, 2024">
         </div>
 
+        <div class="form-group">
+          <label class="form-label">Görünürlük (boş = herkese açık)</label>
+          <div id="fmd-visibility" style="display:flex;flex-wrap:wrap;gap:6px;padding:10px;background:var(--surface2);border:1px solid var(--border);border-radius:9px;min-height:40px"></div>
+        </div>
+
         <div class="modal-actions" style="justify-content:space-between">
           <button type="button" class="btn btn-ghost" style="color:var(--red)" onclick="deleteSelectedFile()">🗑 Sil</button>
           <div style="display:flex;gap:8px">
@@ -1983,6 +1982,54 @@ window.dbgLog = function(msg) {
             <div style="font-size:36px;opacity:.3">💡</div>
             <div style="font-size:12px">Detay için öneri seç</div>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SCREEN: ROLLER -->
+    <div class="screen" id="screen-roles">
+      <div class="topbar">
+        <div class="topbar-title">Roller & İzinler</div>
+        <div style="margin-left:auto">
+          <button class="btn btn-primary" onclick="openAddRoleModal()">+ Yeni Rol</button>
+        </div>
+      </div>
+      <div style="flex:1;display:grid;grid-template-columns:280px 1fr;overflow:hidden">
+
+        <!-- LEFT: role list -->
+        <div style="display:flex;flex-direction:column;overflow:hidden;border-right:1px solid var(--border)">
+          <div style="flex:1;overflow-y:auto;padding:12px;scrollbar-width:thin;scrollbar-color:var(--surface3) transparent" id="rolesList"></div>
+        </div>
+
+        <!-- RIGHT: permission detail -->
+        <div id="roleDetail" style="overflow-y:auto;background:var(--surface);scrollbar-width:thin;scrollbar-color:var(--surface3) transparent">
+          <div style="height:100%;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;color:var(--muted)">
+            <div style="font-size:36px;opacity:.3">🎭</div>
+            <div style="font-size:12px">Detay için rol seç</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- MODAL: Yeni Rol -->
+    <div class="modal-overlay" id="addRoleModal" onclick="if(event.target===this)closeAddRoleModal()">
+      <div class="modal" style="width:380px">
+        <div class="modal-title">Yeni Rol Ekle <button class="modal-close" onclick="closeAddRoleModal()">✕</button></div>
+        <div class="form-group">
+          <label class="form-label">Rol Adı *</label>
+          <input class="form-input" id="ar-name" placeholder="Örn: Muhasebe, Satış...">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Temel Al (izinler kopyalanır)</label>
+          <select class="form-select" id="ar-base">
+            <option value="editor">Editör</option>
+            <option value="viewer" selected>Görüntüleyici</option>
+          </select>
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-ghost" onclick="closeAddRoleModal()">İptal</button>
+          <button class="btn btn-primary" onclick="addRole()">Ekle</button>
         </div>
       </div>
     </div>
@@ -2064,7 +2111,7 @@ window.dbgLog = function(msg) {
                 <select class="form-select" id="new-user-role">
                   <option value="admin">Yönetici</option>
                   <option value="editor">Editör</option>
-                  <option value="viewer">Görüntüleyici</option>
+                  <option value="viewer" selected>Görüntüleyici</option>
                 </select>
               </div>
               <button type="button" class="btn btn-primary" style="width:100%;justify-content:center" onclick="addUser()">+ Kullanıcı Ekle</button>
@@ -2270,7 +2317,6 @@ function doLogin() {
   const u = document.getElementById('loginUser').value.trim();
   const p = document.getElementById('loginPass').value;
   const err = document.getElementById('loginError');
-  // Check against full usersData list
   const found = usersData.find(x => x.username === u && x.password === p);
   if (found) {
     currentUser.username = found.username;
@@ -2278,6 +2324,9 @@ function doLogin() {
     currentUser.role     = found.role || 'admin';
     document.getElementById('loginScreen').style.display = 'none';
     err.textContent = '';
+    // Show/hide roles nav based on permissions
+    const rolesNav = document.getElementById('nav-roles');
+    if (rolesNav) rolesNav.style.display = can('settings','view') ? '' : 'none';
   } else {
     err.textContent = 'Kullanıcı adı veya şifre hatalı';
     document.getElementById('loginPass').value = '';
@@ -2306,8 +2355,8 @@ function renderSettings() {
   document.getElementById('set-password').value = '';
   document.getElementById('settingsUsername').textContent = currentUser.username;
   document.getElementById('settingsAvatar').textContent   = currentUser.username[0].toUpperCase();
-  const roleLabels = { admin:'Yönetici', editor:'Editör', viewer:'Görüntüleyici' };
-  document.getElementById('settingsRole').textContent = roleLabels[currentUser.role || 'admin'];
+  const roleLabel = rolesData.find(r => r.id === (currentUser.role||'admin'))?.name || (currentUser.role||'admin');
+  document.getElementById('settingsRole').textContent = roleLabel;
   renderUsersList();
   renderSourcesList();
   renderSupabaseStatus();
@@ -2316,14 +2365,15 @@ function renderSettings() {
 function renderUsersList() {
   const el = document.getElementById('usersList');
   if (!el) return;
-  const roleLabels = { admin:'Yönetici', editor:'Editör', viewer:'Görüntüleyici' };
-  const isAdmin = (currentUser.role || 'admin') === 'admin';
-  el.innerHTML = usersData.map((u, i) => `
+  const isAdmin = can('settings','view');
+  el.innerHTML = usersData.map((u, i) => {
+    const roleLabel = rolesData.find(r => r.id === u.role)?.name || u.role || 'Görüntüleyici';
+    return `
     <div style="display:flex;align-items:center;gap:10px;padding:10px 13px;background:var(--surface2);border-radius:9px;margin-bottom:6px">
       <div style="width:30px;height:30px;border-radius:8px;background:var(--surface3);display:flex;align-items:center;justify-content:center;font-family:var(--font-head);font-size:12px;font-weight:700;flex-shrink:0">${u.username[0].toUpperCase()}</div>
       <div style="flex:1;min-width:0">
         <div style="font-size:12px;color:var(--text)">${u.username}</div>
-        <div style="font-size:10.5px;color:var(--muted)">${roleLabels[u.role]||u.role}</div>
+        <div style="font-size:10.5px;color:var(--muted)">${roleLabel}</div>
       </div>
       ${u.username === currentUser.username
         ? '<span class="badge badge-muted" style="font-size:10px">Aktif</span>'
@@ -2331,19 +2381,23 @@ function renderUsersList() {
           ? `<button onclick="removeUser(${i})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;padding:0 4px" title="Sil">✕</button>`
           : ''
       }
-    </div>`).join('');
+    </div>`;
+  }).join('');
 
   // Hide add-user form for non-admins
   const addSection = document.querySelector('#screen-settings .add-user-section');
   if (addSection) addSection.style.display = isAdmin ? '' : 'none';
+
+  // Populate role select with current roles
+  const roleSel = document.getElementById('new-user-role');
+  if (roleSel) {
+    const cur = roleSel.value;
+    roleSel.innerHTML = rolesData.map(r => `<option value="${r.id}" ${r.id===cur?'selected':''}>${r.name}</option>`).join('');
+  }
 }
 
 function addUser() {
-  if ((currentUser.role || 'admin') !== 'admin') {
-    document.getElementById('userAddMsg').textContent = '⛔ Sadece yöneticiler kullanıcı ekleyebilir.';
-    setTimeout(() => document.getElementById('userAddMsg').textContent = '', 2500);
-    return;
-  }
+  if (!can('settings','view')) { noPermToast(); return; }
   const name = document.getElementById('new-user-name').value.trim();
   const pass = document.getElementById('new-user-pass').value.trim();
   const role = document.getElementById('new-user-role').value;
@@ -2365,10 +2419,7 @@ function addUser() {
 }
 
 function removeUser(i) {
-  if ((currentUser.role || 'admin') !== 'admin') {
-    showToast('⛔ Sadece yöneticiler kullanıcı silebilir.');
-    return;
-  }
+  if (!can('settings','view')) { noPermToast(); return; }
   if (usersData[i].username === currentUser.username) return;
   usersData.splice(i, 1);
   saveToStorage();
@@ -3201,7 +3252,10 @@ function setFileTag(tag) {
 }
 
 function getFilteredFiles() {
+  const myRole = currentUser.role || 'admin';
   return filesData.filter(f => {
+    // Visibility check: if visibleTo is set and non-empty, only show to those roles
+    if (f.visibleTo && f.visibleTo.length > 0 && !f.visibleTo.includes(myRole)) return false;
     const matchType = activeFileType === 'all' || f.type === activeFileType;
     const matchYear = activeFileYear === 'all' || String(f.year) === activeFileYear;
     const matchTag  = activeFileTag  === 'all' || f.tags.includes(activeFileTag);
@@ -3216,6 +3270,20 @@ function renderFiles() {
   const grid = document.getElementById('filesGrid');
   const list = getFilteredFiles();
   document.getElementById('fcnt-all').textContent = filesData.length;
+
+  // Populate year filter dropdown dynamically
+  const yearSel = document.getElementById('yearSelect');
+  if (yearSel) {
+    const curVal = yearSel.value;
+    const curYear = new Date().getFullYear();
+    yearSel.innerHTML = '<option value="all">Tüm Yıllar</option>';
+    for (let y = curYear; y >= 2016; y--) {
+      const opt = document.createElement('option');
+      opt.value = y; opt.textContent = y;
+      if (String(y) === curVal) opt.selected = true;
+      yearSel.appendChild(opt);
+    }
+  }
 
   // Active tag chip in toolbar
   let tagChipEl = document.getElementById('activeTagChip');
@@ -3287,10 +3355,22 @@ function openFileModal(id) {
   document.getElementById('fmd-desc').value              = f.description || '';
   document.getElementById('fmd-tags').value              = (f.tags || []).join(', ');
 
-  // populate year dropdown 2016–2026
+  // Populate visibility checkboxes
+  const visEl = document.getElementById('fmd-visibility');
+  if (visEl) {
+    visEl.innerHTML = rolesData.map(r => {
+      const checked = !f.visibleTo || f.visibleTo.length === 0 || f.visibleTo.includes(r.id);
+      return `<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted2);cursor:pointer;padding:4px 8px;background:var(--surface3);border-radius:7px">
+        <input type="checkbox" data-role="${r.id}" ${checked?'checked':''} style="accent-color:var(--accent)"> ${r.name}
+      </label>`;
+    }).join('');
+  }
+
+  // populate year dropdown dynamically
   const yearSel = document.getElementById('fmd-year');
   yearSel.innerHTML = '';
-  for (let y = 2026; y >= 2016; y--) {
+  const curYear = new Date().getFullYear();
+  for (let y = curYear; y >= 2016; y--) {
     const opt = document.createElement('option');
     opt.value = y; opt.textContent = y;
     if (y === f.year) opt.selected = true;
@@ -3303,7 +3383,7 @@ function openFileModal(id) {
 
   // show/hide delete button based on role
   const delBtn = document.querySelector('#fileDetailModal .btn-ghost[onclick="deleteSelectedFile()"]');
-  if (delBtn) delBtn.style.display = (currentUser.role||'admin') === 'admin' ? '' : 'none';
+  if (delBtn) delBtn.style.display = can('files','delete') ? '' : 'none';
 
   document.getElementById('fileDetailModal').classList.add('open');
 }
@@ -3350,6 +3430,14 @@ function saveFileEdit() {
   f.uploadedBy  = document.getElementById('fmd-uploader').value.trim();
   f.description = document.getElementById('fmd-desc').value.trim();
   f.tags        = document.getElementById('fmd-tags').value.split(',').map(t => t.trim()).filter(Boolean);
+
+  // Save visibility
+  const visChecks = document.querySelectorAll('#fmd-visibility input[type=checkbox]');
+  if (visChecks.length) {
+    const checked = [...visChecks].filter(c => c.checked).map(c => c.dataset.role);
+    // If all checked, store empty (= everyone); else store selected roles
+    f.visibleTo = checked.length === rolesData.length ? [] : checked;
+  }
   saveToStorage();
   document.getElementById('fileDetailModal').classList.remove('open');
   renderFiles();
@@ -3357,7 +3445,7 @@ function saveFileEdit() {
 }
 
 function deleteSelectedFile() {
-  if ((currentUser.role || 'admin') !== 'admin') { showToast('⛔ Sadece yöneticiler dosya silebilir.'); return; }
+  if (!can('files','delete')) { noPermToast(); return; }
   if (!selectedFileId) return;
   const f = filesData.find(x => String(x.id) === String(selectedFileId));
   filesData = filesData.filter(f => String(f.id) !== String(selectedFileId));
@@ -3704,6 +3792,7 @@ function setFilter(filter, el) {
 }
 
 function setNav(el, screen) {
+  if (screen === 'roles' && !can('settings','view')) { noPermToast(); return; }
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   el.classList.add('active');
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -3714,6 +3803,7 @@ function setNav(el, screen) {
   if (screen === 'duplicates')  renderDuplicates();
   if (screen === 'settings')    renderSettings();
   if (screen === 'suggestions') loadAndRenderSuggestions();
+  if (screen === 'roles')       renderRoles();
 }
 
 function filterCompanies(val) {
@@ -3974,7 +4064,7 @@ function confirmDeleteCompany(id) {
 }
 
 function deleteCompany() {
-  if ((currentUser.role || 'admin') !== 'admin') { showToast('⛔ Sadece yöneticiler şirket silebilir.'); closeEditCompanyModal(); return; }
+  if (!can('companies','delete')) { noPermToast(); closeEditCompanyModal(); return; }
   if (!selectedId) return;
   const co = companies.find(x => String(x.id) === String(selectedId));
   if (!co) return;
@@ -4375,7 +4465,7 @@ function resetFilter() {
 }
 
 // ── KEYBOARD SHORTCUTS ──
-const NAV_SCREENS = ['companies','campaigns','dashboard','files','duplicates','suggestions','settings'];
+const NAV_SCREENS = ['companies','campaigns','dashboard','files','duplicates','suggestions','roles','settings'];
 document.addEventListener('keydown', function(e) {
   const tag = document.activeElement.tagName.toLowerCase();
   const typing = ['input','textarea','select'].includes(tag);
@@ -4622,7 +4712,7 @@ function renderSuggDetail(id) {
     return `class="vote-pill ${active ? cls : ''}" onclick="castVote(${id},'${type}')"`;
   };
 
-  const isAdmin = (currentUser.role || 'admin') === 'admin';
+  const isAdmin = can('suggestions','delete');
 
   document.getElementById('suggDetail').innerHTML = `
     <div style="padding:20px">
@@ -4755,7 +4845,7 @@ async function deleteSuggNote(noteId) {
 }
 
 async function deleteSuggestion(id) {
-  if ((currentUser.role || 'admin') !== 'admin') { showToast('⛔ Sadece yöneticiler silebilir.'); return; }
+  if (!can('suggestions','delete')) { noPermToast(); return; }
   try {
     await fetch(`${SUPA_URL}/rest/v1/suggestions?id=eq.${id}`, {
       method: 'DELETE',
@@ -4779,6 +4869,218 @@ async function deleteSuggestion(id) {
 function escHtml(str) {
   if (!str) return '';
   return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── ROLES & PERMISSIONS ──
+const PERM_DEFS = {
+  companies:   { label: '🏢 Şirketler',       actions: { view:'Görüntüle', add:'Ekle', edit:'Düzenle', delete:'Sil' } },
+  campaigns:   { label: '📣 Kampanyalar',      actions: { view:'Görüntüle', add:'Ekle', edit:'Düzenle', delete:'Sil' } },
+  files:       { label: '🗂️ Dosyalar',         actions: { view:'Görüntüle', add:'Ekle', edit:'Düzenle', delete:'Sil' } },
+  duplicates:  { label: "⚠️ Duplicate'ler",    actions: { view:'Görüntüle', manage:'Yönet' } },
+  suggestions: { label: '💡 Öneriler',         actions: { view:'Görüntüle', vote:'Oy Ver', note:'Not Ekle', delete:'Sil' } },
+  settings:    { label: '⚙️ Ayarlar',          actions: { view:'Görüntüle' } },
+};
+
+let rolesData = [
+  {
+    id: 'admin', name: 'Yönetici', isSystem: true,
+    permissions: {
+      companies:   { view:true,  add:true,  edit:true,  delete:true  },
+      campaigns:   { view:true,  add:true,  edit:true,  delete:true  },
+      files:       { view:true,  add:true,  edit:true,  delete:true  },
+      duplicates:  { view:true,  manage:true  },
+      suggestions: { view:true,  vote:true,  note:true,  delete:true  },
+      settings:    { view:true  },
+    }
+  },
+  {
+    id: 'editor', name: 'Editör', isSystem: false,
+    permissions: {
+      companies:   { view:true,  add:true,  edit:true,  delete:false },
+      campaigns:   { view:true,  add:true,  edit:true,  delete:false },
+      files:       { view:true,  add:true,  edit:true,  delete:false },
+      duplicates:  { view:true,  manage:false },
+      suggestions: { view:true,  vote:true,  note:true,  delete:false },
+      settings:    { view:false },
+    }
+  },
+  {
+    id: 'viewer', name: 'Görüntüleyici', isSystem: false,
+    permissions: {
+      companies:   { view:true,  add:false, edit:false, delete:false },
+      campaigns:   { view:true,  add:false, edit:false, delete:false },
+      files:       { view:true,  add:false, edit:false, delete:false },
+      duplicates:  { view:false, manage:false },
+      suggestions: { view:true,  vote:false, note:false, delete:false },
+      settings:    { view:false },
+    }
+  },
+];
+
+let selectedRoleId = null;
+
+function can(resource, action) {
+  const roleId = currentUser.role || 'admin';
+  const r = rolesData.find(x => x.id === roleId);
+  if (!r) return false;
+  if (r.isSystem && r.id === 'admin') return true;
+  return r.permissions?.[resource]?.[action] === true;
+}
+
+function noPermToast() {
+  showToast('Oops, bunu yapmaya iznin yok kanks. 🙅');
+}
+
+function renderRoles() {
+  const el = document.getElementById('rolesList');
+  if (!el) return;
+  el.innerHTML = rolesData.map(r => `
+    <div class="company-card ${selectedRoleId === r.id ? 'selected' : ''}" onclick="selectRole('${r.id}')" style="margin-bottom:8px">
+      <div style="flex:1;min-width:0">
+        <div style="font-family:var(--font-head);font-size:14px;font-weight:600;color:var(--text);margin-bottom:4px">
+          ${r.isSystem ? '🔒 ' : ''}${r.name}
+        </div>
+        <div style="font-size:11px;color:var(--muted)">${r.isSystem ? 'Sistem rolü' : 'Özel rol'}</div>
+      </div>
+      <div style="font-size:10px;color:var(--muted2);background:var(--surface3);padding:3px 9px;border-radius:20px">${r.id}</div>
+    </div>`).join('');
+}
+
+function selectRole(id) {
+  selectedRoleId = id;
+  renderRoles();
+  renderRoleDetail(id);
+}
+
+function renderRoleDetail(id) {
+  const r = rolesData.find(x => x.id === id);
+  if (!r) return;
+  const isFullAdmin = r.isSystem && r.id === 'admin';
+
+  const permRows = Object.entries(PERM_DEFS).map(([res, def]) => {
+    const actionRows = Object.entries(def.actions).map(([act, label]) => {
+      const checked = isFullAdmin ? true : (r.permissions?.[res]?.[act] === true);
+      return `
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--bg);border-radius:8px;margin-bottom:4px">
+          <span style="font-size:12px;color:var(--muted2)">${label}</span>
+          <div class="toggle-wrap" data-on="${checked}"
+               onclick="${isFullAdmin ? '' : `toggleRolePerm('${id}','${res}','${act}',this)`}"
+               style="${isFullAdmin ? 'opacity:0.4;cursor:not-allowed' : ''}">
+            <div class="toggle-knob"></div>
+          </div>
+        </div>`;
+    }).join('');
+    return `
+      <div style="margin-bottom:16px">
+        <div style="font-size:11px;font-weight:600;letter-spacing:.04em;color:var(--text);margin-bottom:8px">${def.label}</div>
+        ${actionRows}
+      </div>`;
+  }).join('');
+
+  document.getElementById('roleDetail').innerHTML = `
+    <div style="padding:24px">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px">
+        <div>
+          <div style="font-family:var(--font-head);font-size:20px;font-weight:700;color:var(--text);margin-bottom:4px">${r.name}</div>
+          <div style="font-size:11px;color:var(--muted)">${r.isSystem ? '🔒 Sistem rolü — silinemez ve değiştirilemez' : `Özel rol · ID: ${r.id}`}</div>
+        </div>
+        ${!r.isSystem ? `<button class="btn btn-ghost" style="color:var(--red);font-size:11px" onclick="deleteRole('${r.id}')">🗑 Sil</button>` : ''}
+      </div>
+
+      ${!r.isSystem ? `
+      <div style="margin-bottom:24px;padding-bottom:24px;border-bottom:1px solid var(--border)">
+        <div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:8px">Rol Adı</div>
+        <div style="display:flex;gap:8px">
+          <input class="form-input" id="roleNameInput" value="${r.name}" style="flex:1">
+          <button class="btn btn-ghost" onclick="saveRoleName('${r.id}')">Kaydet</button>
+        </div>
+      </div>` : ''}
+
+      <div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:16px">İzin Matrisi</div>
+      ${isFullAdmin ? '<div style="background:var(--surface2);border-radius:10px;padding:14px;font-size:12px;color:var(--muted);margin-bottom:20px">Yönetici rolü tüm izinlere sahiptir ve kısıtlanamaz.</div>' : ''}
+      ${permRows}
+    </div>`;
+}
+
+function toggleRolePerm(roleId, resource, action, el) {
+  const r = rolesData.find(x => x.id === roleId);
+  if (!r || (r.isSystem && r.id === 'admin')) return;
+  if (!r.permissions[resource]) r.permissions[resource] = {};
+  const cur = r.permissions[resource][action] === true;
+  r.permissions[resource][action] = !cur;
+  el.dataset.on = String(!cur);
+  saveRolesToStorage();
+}
+
+function saveRoleName(roleId) {
+  const r = rolesData.find(x => x.id === roleId);
+  if (!r) return;
+  const val = document.getElementById('roleNameInput')?.value?.trim();
+  if (!val) return;
+  r.name = val;
+  saveRolesToStorage();
+  renderRoles();
+  showToast('✓ Rol adı güncellendi');
+}
+
+function deleteRole(roleId) {
+  const r = rolesData.find(x => x.id === roleId);
+  if (!r || r.isSystem) return;
+  if (!confirm(r.name + ' rolü silinsin mi?\nBu roldeki kullanıcılar Görüntüleyici yapılır.')) return;
+  rolesData = rolesData.filter(x => x.id !== roleId);
+  usersData.forEach(u => { if (u.role === roleId) u.role = 'viewer'; });
+  saveToStorage();
+  saveRolesToStorage();
+  selectedRoleId = null;
+  document.getElementById('roleDetail').innerHTML = `
+    <div style="height:100%;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;color:var(--muted)">
+      <div style="font-size:36px;opacity:.3">🎭</div>
+      <div style="font-size:12px">Detay için rol seç</div>
+    </div>`;
+  renderRoles();
+  showToast('✓ Rol silindi');
+}
+
+function openAddRoleModal()  { document.getElementById('addRoleModal').classList.add('open'); document.getElementById('ar-name').value=''; }
+function closeAddRoleModal() { document.getElementById('addRoleModal').classList.remove('open'); }
+
+function addRole() {
+  const name = document.getElementById('ar-name').value.trim();
+  if (!name) { document.getElementById('ar-name').focus(); return; }
+  const base = document.getElementById('ar-base').value;
+  const baseRole = rolesData.find(x => x.id === base);
+  const id = 'role_' + Date.now();
+  rolesData.push({
+    id, name, isSystem: false,
+    permissions: JSON.parse(JSON.stringify(baseRole?.permissions || {}))
+  });
+  // Update the base role select with all non-system roles
+  const sel = document.getElementById('ar-base');
+  if (sel) {
+    const opt = document.createElement('option');
+    opt.value = id; opt.textContent = name;
+    sel.appendChild(opt);
+  }
+  saveRolesToStorage();
+  closeAddRoleModal();
+  renderRoles();
+  selectRole(id);
+  showToast('✓ ' + name + ' rolü eklendi');
+}
+
+function saveRolesToStorage() {
+  try { localStorage.setItem('harman_roles', JSON.stringify(rolesData)); } catch(e) {}
+}
+
+function loadRolesFromStorage() {
+  try {
+    const saved = localStorage.getItem('harman_roles');
+    if (!saved) return;
+    const parsed = JSON.parse(saved);
+    const sysRoles  = rolesData.filter(r => r.isSystem);
+    const nonSystem = parsed.filter(r => !r.isSystem);
+    rolesData = [...sysRoles, ...nonSystem];
+  } catch(e) {}
 }
 
 // ── SUPABASE ──
@@ -5048,6 +5350,7 @@ function showToast(msg) {
 // Clear old blacklist storage key (no longer used)
 try { localStorage.removeItem('harman_dup_blacklist'); } catch(e) {}
 
+loadRolesFromStorage();
 loadFromStorage().then(() => renderList());
 </script>
 </body>
