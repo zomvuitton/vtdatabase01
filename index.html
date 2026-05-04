@@ -4968,8 +4968,9 @@ let selectedRoleId = null;
 
 function can(resource, action) {
   const roleId = currentUser.role || 'admin';
+  if (roleId === 'admin') return true;
   const r = rolesData.find(x => x.id === roleId);
-  if (!r) return false;
+  if (!r) return true; // role not loaded yet — allow everything (safe default)
   if (r.isSystem && r.id === 'admin') return true;
   return r.permissions?.[resource]?.[action] === true;
 }
@@ -5154,7 +5155,7 @@ async function loadRolesFromSupabase() {
     });
     if (!res.ok) throw new Error('Supabase roles fetch failed');
     const rows = await res.json();
-    if (!rows.length) return; // Nothing in Supabase yet
+    if (!rows.length) return;
     const sysRoles = rolesData.filter(r => r.isSystem);
     const nonSystem = rows.filter(r => !r.is_system).map(r => ({
       id: r.id,
@@ -5163,11 +5164,12 @@ async function loadRolesFromSupabase() {
       permissions: r.permissions || {}
     }));
     rolesData = [...sysRoles, ...nonSystem];
-    // Keep localStorage in sync
     try { localStorage.setItem('harman_roles', JSON.stringify(rolesData)); } catch(e) {}
   } catch(e) {
-    // Fallback to localStorage
     loadRolesFromStorage();
+  } finally {
+    // Re-apply nav after roles are loaded (in case user already logged in)
+    if (currentUser && currentUser.username) applyNavPermissions();
   }
 }
 
