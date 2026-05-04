@@ -1336,6 +1336,91 @@
   }
   .notes-area:focus { border-color: var(--accent); }
   .notes-area::placeholder { color: var(--muted); }
+  /* ── SUGGESTIONS ── */
+  .sugg-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .sugg-card:hover { background: var(--surface2); border-color: rgba(255,255,255,0.12); }
+  .sugg-card.selected { background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.25); }
+
+  .sugg-message {
+    font-size: 13px;
+    color: var(--text);
+    line-height: 1.5;
+    margin-bottom: 10px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .sugg-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    color: var(--muted);
+    flex-wrap: wrap;
+  }
+
+  .vote-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 9px;
+    border-radius: 20px;
+    font-size: 11px;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--muted2);
+    transition: all 0.15s;
+    font-family: var(--font-mono);
+  }
+  .vote-pill:hover { border-color: rgba(255,255,255,0.2); color: var(--text); }
+  .vote-pill.vote-pos { background: rgba(200,200,200,0.08); border-color: var(--green); color: var(--green); }
+  .vote-pill.vote-neg { background: rgba(96,96,96,0.1); border-color: var(--red); color: var(--red); }
+  .vote-pill.vote-neu { background: rgba(144,144,144,0.08); border-color: var(--amber); color: var(--amber); }
+
+  .sugg-note-row {
+    display: flex;
+    gap: 10px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+  }
+
+  .sugg-note-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    background: var(--surface3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-head);
+    font-size: 11px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  .voter-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 10px;
+    background: var(--surface2);
+    border-radius: 8px;
+    margin-bottom: 5px;
+    font-size: 11.5px;
+  }
+
 </style>
 </head>
 <body>
@@ -1412,6 +1497,11 @@ window.dbgLog = function(msg) {
     <div class="nav-item" onclick="setNav(this,'duplicates')">
       ⚠️
       <div class="tooltip">Duplicate'ler</div>
+    </div>
+    <div class="nav-item" id="nav-suggestions" onclick="setNav(this,'suggestions')">
+      💡
+      <div class="tooltip">Öneriler</div>
+      <div class="notif-badge" id="suggBadge" style="display:none">0</div>
     </div>
 
     <div class="sidebar-spacer"></div>
@@ -1861,6 +1951,39 @@ window.dbgLog = function(msg) {
           </div>
         </div>
 
+      </div>
+    </div>
+
+    <!-- SCREEN: SUGGESTIONS -->
+    <div class="screen" id="screen-suggestions">
+      <div class="topbar">
+        <div class="topbar-title">Öneriler</div>
+        <div style="margin-left:auto;display:flex;gap:10px;align-items:center">
+          <span id="suggCount" style="font-size:12px;color:var(--muted)"></span>
+          <button class="btn btn-ghost" onclick="loadAndRenderSuggestions()">↺ Yenile</button>
+        </div>
+      </div>
+      <div style="flex:1;display:grid;grid-template-columns:1fr 360px;overflow:hidden">
+
+        <!-- LEFT: suggestions list -->
+        <div style="display:flex;flex-direction:column;overflow:hidden;border-right:1px solid var(--border)">
+          <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;gap:8px">
+            <div class="filter-chip active" onclick="setSuggFilter('all',this)" style="font-size:11px;padding:4px 11px">Tümü <span class="filter-count" id="scnt-all">0</span></div>
+            <div class="filter-chip" onclick="setSuggFilter('anon',this)" style="font-size:11px;padding:4px 11px">Anonim <span class="filter-count" id="scnt-anon">0</span></div>
+            <div class="filter-chip" onclick="setSuggFilter('named',this)" style="font-size:11px;padding:4px 11px">İsimli <span class="filter-count" id="scnt-named">0</span></div>
+          </div>
+          <div id="suggList" style="flex:1;overflow-y:auto;padding:12px;scrollbar-width:thin;scrollbar-color:var(--surface3) transparent">
+            <div style="text-align:center;color:var(--muted);padding:40px 16px;font-size:12px">Yükleniyor...</div>
+          </div>
+        </div>
+
+        <!-- RIGHT: suggestion detail -->
+        <div id="suggDetail" style="overflow-y:auto;background:var(--surface);scrollbar-width:thin;scrollbar-color:var(--surface3) transparent">
+          <div style="height:100%;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;color:var(--muted)">
+            <div style="font-size:36px;opacity:.3">💡</div>
+            <div style="font-size:12px">Detay için öneri seç</div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -3585,11 +3708,12 @@ function setNav(el, screen) {
   el.classList.add('active');
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById('screen-' + screen).classList.add('active');
-  if (screen === 'dashboard')  renderDashboard();
-  if (screen === 'campaigns')  renderCampList();
-  if (screen === 'files')      renderFiles();
-  if (screen === 'duplicates') renderDuplicates();
-  if (screen === 'settings')   renderSettings();
+  if (screen === 'dashboard')   renderDashboard();
+  if (screen === 'campaigns')   renderCampList();
+  if (screen === 'files')       renderFiles();
+  if (screen === 'duplicates')  renderDuplicates();
+  if (screen === 'settings')    renderSettings();
+  if (screen === 'suggestions') loadAndRenderSuggestions();
 }
 
 function filterCompanies(val) {
@@ -4251,7 +4375,7 @@ function resetFilter() {
 }
 
 // ── KEYBOARD SHORTCUTS ──
-const NAV_SCREENS = ['companies','campaigns','dashboard','files','duplicates','settings'];
+const NAV_SCREENS = ['companies','campaigns','dashboard','files','duplicates','suggestions','settings'];
 document.addEventListener('keydown', function(e) {
   const tag = document.activeElement.tagName.toLowerCase();
   const typing = ['input','textarea','select'].includes(tag);
@@ -4313,6 +4437,349 @@ document.addEventListener('keydown', function(e) {
   }
 });
 
+
+// ── SUGGESTIONS ──
+let suggestionsData   = [];
+let suggVotesData     = [];
+let suggNotesData     = [];
+let selectedSuggId    = null;
+let activeSuggFilter  = 'all';
+
+async function loadAndRenderSuggestions() {
+  document.getElementById('suggList').innerHTML =
+    '<div style="text-align:center;color:var(--muted);padding:40px 16px;font-size:12px">Yükleniyor...</div>';
+
+  try {
+    // Load suggestions
+    const sRes = await fetch(`${SUPA_URL}/rest/v1/suggestions?select=*&order=created_at.desc`, {
+      headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}` }
+    });
+    suggestionsData = sRes.ok ? await sRes.json() : [];
+
+    // Load all votes
+    const vRes = await fetch(`${SUPA_URL}/rest/v1/suggestion_votes?select=*`, {
+      headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}` }
+    });
+    suggVotesData = vRes.ok ? await vRes.json() : [];
+
+    // Load all notes
+    const nRes = await fetch(`${SUPA_URL}/rest/v1/suggestion_notes?select=*&order=created_at.asc`, {
+      headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}` }
+    });
+    suggNotesData = nRes.ok ? await nRes.json() : [];
+
+  } catch(e) {
+    console.warn('Suggestions load error:', e);
+    suggestionsData = []; suggVotesData = []; suggNotesData = [];
+  }
+
+  renderSuggList();
+  updateSuggBadge();
+}
+
+function updateSuggBadge() {
+  const badge = document.getElementById('suggBadge');
+  if (!badge) return;
+  const n = suggestionsData.length;
+  if (n > 0) {
+    badge.textContent = n > 9 ? '9+' : n;
+    badge.style.display = 'flex';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+function setSuggFilter(f, el) {
+  activeSuggFilter = f;
+  document.querySelectorAll('#screen-suggestions .filter-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  renderSuggList();
+}
+
+function getFilteredSuggestions() {
+  return suggestionsData.filter(s => {
+    if (activeSuggFilter === 'anon')  return s.is_anonymous;
+    if (activeSuggFilter === 'named') return !s.is_anonymous;
+    return true;
+  });
+}
+
+function formatSuggDate(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  return d.toLocaleDateString('tr-TR', { day:'2-digit', month:'short', year:'numeric' });
+}
+
+function getVotesFor(suggId) {
+  return suggVotesData.filter(v => String(v.suggestion_id) === String(suggId));
+}
+
+function getNotesFor(suggId) {
+  return suggNotesData.filter(n => String(n.suggestion_id) === String(suggId));
+}
+
+function myVoteFor(suggId) {
+  return suggVotesData.find(v =>
+    String(v.suggestion_id) === String(suggId) &&
+    v.voter_name === currentUser.username
+  );
+}
+
+function renderSuggList() {
+  const list = getFilteredSuggestions();
+  const all  = suggestionsData.length;
+  const anon = suggestionsData.filter(s => s.is_anonymous).length;
+
+  document.getElementById('scnt-all').textContent   = all;
+  document.getElementById('scnt-anon').textContent  = anon;
+  document.getElementById('scnt-named').textContent = all - anon;
+  document.getElementById('suggCount').textContent  = all + ' öneri';
+
+  const el = document.getElementById('suggList');
+  if (!list.length) {
+    el.innerHTML = '<div style="text-align:center;color:var(--muted);padding:40px 16px;font-size:12px">Henüz öneri yok</div>';
+    return;
+  }
+
+  el.innerHTML = list.map(s => {
+    const votes    = getVotesFor(s.id);
+    const pos      = votes.filter(v => v.vote === 'positive').length;
+    const neg      = votes.filter(v => v.vote === 'negative').length;
+    const neu      = votes.filter(v => v.vote === 'neutral').length;
+    const notesCnt = getNotesFor(s.id).length;
+    const myVote   = myVoteFor(s.id);
+    const sender   = s.is_anonymous ? '👤 Anonim' : `👤 ${s.sender_name || '—'}`;
+
+    return `
+    <div class="sugg-card ${String(selectedSuggId) === String(s.id) ? 'selected' : ''}" onclick="selectSuggestion(${s.id})">
+      <div class="sugg-message">${escHtml(s.message)}</div>
+      <div class="sugg-meta">
+        <span>${sender}</span>
+        <span>·</span>
+        <span>${formatSuggDate(s.created_at)}</span>
+        ${notesCnt ? `<span>· 💬 ${notesCnt}</span>` : ''}
+      </div>
+      <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">
+        <span class="vote-pill ${myVote?.vote === 'positive' ? 'vote-pos' : ''}">👍 ${pos}</span>
+        <span class="vote-pill ${myVote?.vote === 'negative' ? 'vote-neg' : ''}">👎 ${neg}</span>
+        <span class="vote-pill ${myVote?.vote === 'neutral'  ? 'vote-neu' : ''}">🤝 ${neu}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function selectSuggestion(id) {
+  selectedSuggId = id;
+  renderSuggList();
+  renderSuggDetail(id);
+}
+
+function renderSuggDetail(id) {
+  const s = suggestionsData.find(x => String(x.id) === String(id));
+  if (!s) return;
+
+  const votes  = getVotesFor(id);
+  const notes  = getNotesFor(id);
+  const myVote = myVoteFor(id);
+
+  const pos = votes.filter(v => v.vote === 'positive');
+  const neg = votes.filter(v => v.vote === 'negative');
+  const neu = votes.filter(v => v.vote === 'neutral');
+
+  const voterSection = (label, list, cls) => {
+    if (!list.length) return '';
+    return `<div style="margin-bottom:12px">
+      <div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:6px">${label}</div>
+      ${list.map(v => `
+        <div class="voter-row">
+          <div class="sugg-note-avatar">${v.voter_name[0].toUpperCase()}</div>
+          <span style="flex:1;color:var(--text)">${v.voter_name}</span>
+          <span style="font-size:10px;color:var(--muted)">${formatSuggDate(v.created_at)}</span>
+        </div>`).join('')}
+    </div>`;
+  };
+
+  const notesHTML = notes.length
+    ? notes.map(n => `
+      <div class="sugg-note-row">
+        <div class="sugg-note-avatar">${n.author[0].toUpperCase()}</div>
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+            <span style="font-size:12px;color:var(--text);font-weight:500">${escHtml(n.author)}</span>
+            <span style="font-size:10px;color:var(--muted)">${formatSuggDate(n.created_at)}</span>
+            ${(currentUser.role || 'admin') === 'admin' || n.author === currentUser.username
+              ? `<button onclick="deleteSuggNote(${n.id})" style="margin-left:auto;background:none;border:none;color:var(--muted);cursor:pointer;font-size:12px;padding:0 4px">✕</button>`
+              : ''}
+          </div>
+          <div style="font-size:12px;color:var(--muted2);line-height:1.5">${escHtml(n.content)}</div>
+        </div>
+      </div>`).join('')
+    : '<div style="color:var(--muted);font-size:12px;padding:8px 0">Henüz not eklenmemiş</div>';
+
+  const voteButtonStyle = (type) => {
+    const active = myVote?.vote === type;
+    const cls = type === 'positive' ? 'vote-pos' : type === 'negative' ? 'vote-neg' : 'vote-neu';
+    return `class="vote-pill ${active ? cls : ''}" onclick="castVote(${id},'${type}')"`;
+  };
+
+  const isAdmin = (currentUser.role || 'admin') === 'admin';
+
+  document.getElementById('suggDetail').innerHTML = `
+    <div style="padding:20px">
+
+      <!-- Header -->
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px">
+        <div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:6px">
+            ${s.is_anonymous ? '👤 Anonim' : `👤 ${escHtml(s.sender_name || '—')}`}
+            &nbsp;·&nbsp; ${formatSuggDate(s.created_at)}
+          </div>
+        </div>
+        ${isAdmin ? `<button onclick="deleteSuggestion(${id})" class="btn btn-ghost" style="font-size:11px;padding:6px 10px;color:var(--red)">🗑</button>` : ''}
+      </div>
+
+      <!-- Message -->
+      <div style="background:var(--surface2);border-radius:10px;padding:16px;font-size:13px;color:var(--text);line-height:1.7;margin-bottom:20px;border:1px solid var(--border)">
+        ${escHtml(s.message)}
+      </div>
+
+      <!-- Vote buttons -->
+      <div style="margin-bottom:20px">
+        <div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:10px">Oyunuz</div>
+        <div style="display:flex;gap:8px">
+          <button ${voteButtonStyle('positive')} style="flex:1;justify-content:center">👍 Olumlu</button>
+          <button ${voteButtonStyle('negative')} style="flex:1;justify-content:center">👎 Olumsuz</button>
+          <button ${voteButtonStyle('neutral')}  style="flex:1;justify-content:center">🤝 Çekimser</button>
+        </div>
+        ${myVote ? `<div style="font-size:11px;color:var(--muted);margin-top:8px;text-align:center">Oyunuz kaydedildi · <button onclick="removeVote(${id})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:11px;text-decoration:underline">Geri al</button></div>` : ''}
+      </div>
+
+      <!-- Vote breakdown -->
+      <div style="margin-bottom:20px">
+        <div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:10px">Oy Dağılımı</div>
+        ${!votes.length ? '<div style="font-size:12px;color:var(--muted)">Henüz oy kullanılmamış</div>' : ''}
+        ${voterSection('👍 Olumlu (' + pos.length + ')', pos, 'vote-pos')}
+        ${voterSection('👎 Olumsuz (' + neg.length + ')', neg, 'vote-neg')}
+        ${voterSection('🤝 Çekimser (' + neu.length + ')', neu, 'vote-neu')}
+      </div>
+
+      <!-- Notes -->
+      <div style="margin-bottom:16px">
+        <div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:10px">Notlar</div>
+        <div id="suggNotesList">${notesHTML}</div>
+      </div>
+
+      <!-- Add note -->
+      <div style="border-top:1px solid var(--border);padding-top:14px">
+        <textarea id="suggNoteInput" class="notes-area" placeholder="Not ekle..." style="min-height:70px;margin-bottom:8px"></textarea>
+        <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="addSuggNote(${id})">Not Ekle</button>
+      </div>
+
+    </div>`;
+}
+
+async function castVote(suggId, voteType) {
+  const existing = myVoteFor(suggId);
+  try {
+    if (existing) {
+      // Update existing vote
+      await fetch(`${SUPA_URL}/rest/v1/suggestion_votes?id=eq.${existing.id}`, {
+        method: 'PATCH',
+        headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+        body: JSON.stringify({ vote: voteType })
+      });
+      existing.vote = voteType;
+    } else {
+      // Insert new vote
+      const res = await fetch(`${SUPA_URL}/rest/v1/suggestion_votes`, {
+        method: 'POST',
+        headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
+        body: JSON.stringify({ suggestion_id: suggId, voter_name: currentUser.username, vote: voteType })
+      });
+      if (res.ok) {
+        const rows = await res.json();
+        if (rows[0]) suggVotesData.push(rows[0]);
+      }
+    }
+  } catch(e) { console.warn('Vote error:', e); }
+  renderSuggList();
+  renderSuggDetail(suggId);
+}
+
+async function removeVote(suggId) {
+  const existing = myVoteFor(suggId);
+  if (!existing) return;
+  try {
+    await fetch(`${SUPA_URL}/rest/v1/suggestion_votes?id=eq.${existing.id}`, {
+      method: 'DELETE',
+      headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}` }
+    });
+    suggVotesData = suggVotesData.filter(v => v.id !== existing.id);
+  } catch(e) { console.warn('Remove vote error:', e); }
+  renderSuggList();
+  renderSuggDetail(suggId);
+}
+
+async function addSuggNote(suggId) {
+  const input   = document.getElementById('suggNoteInput');
+  const content = input?.value?.trim();
+  if (!content) return;
+  try {
+    const res = await fetch(`${SUPA_URL}/rest/v1/suggestion_notes`, {
+      method: 'POST',
+      headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
+      body: JSON.stringify({ suggestion_id: suggId, author: currentUser.username, content })
+    });
+    if (res.ok) {
+      const rows = await res.json();
+      if (rows[0]) suggNotesData.push(rows[0]);
+      input.value = '';
+      showToast('✓ Not eklendi');
+    }
+  } catch(e) { console.warn('Add note error:', e); }
+  renderSuggList();
+  renderSuggDetail(suggId);
+}
+
+async function deleteSuggNote(noteId) {
+  try {
+    await fetch(`${SUPA_URL}/rest/v1/suggestion_notes?id=eq.${noteId}`, {
+      method: 'DELETE',
+      headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}` }
+    });
+    suggNotesData = suggNotesData.filter(n => n.id !== noteId);
+    showToast('✓ Not silindi');
+  } catch(e) { console.warn('Delete note error:', e); }
+  renderSuggList();
+  if (selectedSuggId) renderSuggDetail(selectedSuggId);
+}
+
+async function deleteSuggestion(id) {
+  if ((currentUser.role || 'admin') !== 'admin') { showToast('⛔ Sadece yöneticiler silebilir.'); return; }
+  try {
+    await fetch(`${SUPA_URL}/rest/v1/suggestions?id=eq.${id}`, {
+      method: 'DELETE',
+      headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}` }
+    });
+    suggestionsData = suggestionsData.filter(s => s.id !== id);
+    suggVotesData   = suggVotesData.filter(v => String(v.suggestion_id) !== String(id));
+    suggNotesData   = suggNotesData.filter(n => String(n.suggestion_id) !== String(id));
+    selectedSuggId  = null;
+    document.getElementById('suggDetail').innerHTML = `
+      <div style="height:100%;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;color:var(--muted)">
+        <div style="font-size:36px;opacity:.3">💡</div>
+        <div style="font-size:12px">Detay için öneri seç</div>
+      </div>`;
+    showToast('✓ Öneri silindi');
+  } catch(e) { console.warn('Delete suggestion error:', e); }
+  renderSuggList();
+  updateSuggBadge();
+}
+
+function escHtml(str) {
+  if (!str) return '';
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
 
 // ── SUPABASE ──
 const SUPA_URL = 'https://szqoldtcinbqjgfyptmq.supabase.co';
