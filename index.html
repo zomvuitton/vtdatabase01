@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Harman</title>
+<title>VT Database</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -1429,7 +1429,7 @@
   <div style="width:340px">
     <div style="text-align:center;margin-bottom:36px">
       <div style="width:48px;height:48px;background:linear-gradient(135deg,#404040,#1e1e1e);border-radius:14px;display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:800;font-size:14px;color:#efefef;margin:0 auto 14px">VT</div>
-      <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:#efefef;margin-bottom:4px">Harman</div>
+      <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:#efefef;margin-bottom:4px">VT Database</div>
       <div style="font-size:11px;color:#555">Devam etmek için giriş yapın</div>
     </div>
     <div style="background:#111111;border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:28px">
@@ -2156,14 +2156,14 @@ window.dbgLog = function(msg) {
             <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px">
               <div id="settingsAvatar" style="width:52px;height:52px;border-radius:14px;background:var(--surface3);display:flex;align-items:center;justify-content:center;font-family:var(--font-head);font-size:20px;font-weight:700;color:var(--text)">H</div>
               <div>
-                <div style="font-family:var(--font-head);font-size:15px;font-weight:700" id="settingsUsername">harman</div>
+                <div style="font-family:var(--font-head);font-size:15px;font-weight:700" id="settingsUsername">VT Database</div>
                 <div style="font-size:11px;color:var(--muted)" id="settingsRole">Yönetici</div>
               </div>
             </div>
             <div class="form-row">
               <div class="form-group">
                 <label class="form-label">Kullanıcı Adı</label>
-                <input class="form-input" id="set-username" value="harman">
+                <input class="form-input" id="set-username" value="VT Database">
               </div>
               <div class="form-group">
                 <label class="form-label">Yeni Şifre</label>
@@ -2342,7 +2342,7 @@ window.dbgLog = function(msg) {
 <script>
 
 // ── AUTH ──
-let currentUser = { username: 'harman', password: 'databasedemo' };
+let currentUser = { username: 'VT Database', password: 'databasedemo' };
 
 let rolesData = [
   {
@@ -2416,7 +2416,7 @@ let sourcesData = ['LinkedIn','Kaynak Panel A','Kaynak Panel B','Kaynak Panel C'
 
 // ── USERS ──
 let usersData = [
-  { username: 'harman', password: 'databasedemo', role: 'admin' }
+  { username: 'VT Database', password: 'databasedemo', role: 'admin' }
 ];
 
 function renderSettings() {
@@ -2482,7 +2482,7 @@ function addUser() {
   saveToStorage();
   addLog('add','users', `"${name}" kullanıcısı eklendi`);
   // Sync to Supabase
-  fetch(`${SUPA_URL}/rest/v1/harman_users`, {
+  fetch(`${SUPA_URL}/rest/v1/VT Database_users`, {
     method: 'POST',
     headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
     body: JSON.stringify({ username: name, password: pass, role })
@@ -2502,7 +2502,7 @@ function removeUser(i) {
   saveToStorage();
   addLog('delete','users', `"${removedName}" kullanıcısı silindi`);
   // Sync to Supabase
-  fetch(`${SUPA_URL}/rest/v1/harman_users?username=eq.${encodeURIComponent(removedName)}`, {
+  fetch(`${SUPA_URL}/rest/v1/VT Database_users?username=eq.${encodeURIComponent(removedName)}`, {
     method: 'DELETE',
     headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}` }
   }).catch(console.warn);
@@ -2589,7 +2589,7 @@ function saveCredentials() {
   // Sync to Supabase
   const updPayload = { username: currentUser.username };
   if (p) updPayload.password = currentUser.password;
-  fetch(`${SUPA_URL}/rest/v1/harman_users?username=eq.${encodeURIComponent(u)}`, {
+  fetch(`${SUPA_URL}/rest/v1/VT Database_users?username=eq.${encodeURIComponent(u)}`, {
     method: 'PATCH',
     headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
     body: JSON.stringify(updPayload)
@@ -3554,8 +3554,8 @@ function deleteSelectedFile() {
   addLog('delete','files', `"${deletedFileName}" dosyası silindi`);
   // Also delete from Storage if has publicUrl
   if (f && f.publicUrl && supaOk) {
-    const path = f.publicUrl.split('/harman-files/')[1];
-    if (path) fetch(SUPA_URL + '/storage/v1/object/harman-files', {
+    const path = f.publicUrl.split('/VT Database-files/')[1];
+    if (path) fetch(SUPA_URL + '/storage/v1/object/VT Database-files', {
       method: 'DELETE',
       headers: {
         'apikey': SUPA_KEY,
@@ -3613,7 +3613,7 @@ async function handleFileUpload(input) {
       try {
         const filePath = Date.now() + '_' + entry.originalName.replace(/[^a-zA-Z0-9._-]/g, '_');
         const res = await fetch(
-          SUPA_URL + '/storage/v1/object/harman-files/' + filePath,
+          SUPA_URL + '/storage/v1/object/VT Database-files/' + filePath,
           {
             method: 'POST',
             headers: {
@@ -3626,7 +3626,7 @@ async function handleFileUpload(input) {
           }
         );
         if (res.ok) {
-          entry.publicUrl = SUPA_URL + '/storage/v1/object/public/harman-files/' + filePath;
+          entry.publicUrl = SUPA_URL + '/storage/v1/object/public/VT Database-files/' + filePath;
           uploaded++;
         }
       } catch(e) {
@@ -4510,11 +4510,11 @@ function closeShortcutsModal() { document.getElementById('shortcutsModal').class
 function toggleTheme() {
   const isLight = document.documentElement.classList.toggle('light');
   document.getElementById('themeBtn').textContent = isLight ? '☀️' : '🌙';
-  try { localStorage.setItem('harman_theme', isLight ? 'light' : 'dark'); } catch(e) {}
+  try { localStorage.setItem('VT Database_theme', isLight ? 'light' : 'dark'); } catch(e) {}
 }
 // Restore saved theme on load
 try {
-  if (localStorage.getItem('harman_theme') === 'light') {
+  if (localStorage.getItem('VT Database_theme') === 'light') {
     document.documentElement.classList.add('light');
     document.addEventListener('DOMContentLoaded', () => {
       const btn = document.getElementById('themeBtn');
@@ -5157,7 +5157,7 @@ function deleteRole(roleId) {
   saveToStorage();
   saveRolesToStorage();
   // Delete from Supabase
-  fetch(`${SUPA_URL}/rest/v1/harman_roles?id=eq.${roleId}`, {
+  fetch(`${SUPA_URL}/rest/v1/VT Database_roles?id=eq.${roleId}`, {
     method: 'DELETE',
     headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}` }
   }).catch(console.warn);
@@ -5196,7 +5196,7 @@ function addRole() {
   // Insert to Supabase immediately
   const newRole = rolesData.find(r => r.id === id);
   if (newRole) {
-    fetch(`${SUPA_URL}/rest/v1/harman_roles`, {
+    fetch(`${SUPA_URL}/rest/v1/VT Database_roles`, {
       method: 'POST',
       headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
       body: JSON.stringify({ id, name, is_system: false, permissions: newRole.permissions })
@@ -5210,11 +5210,11 @@ function addRole() {
 }
 
 function saveRolesToStorage() {
-  try { localStorage.setItem('harman_roles', JSON.stringify(rolesData)); } catch(e) {}
+  try { localStorage.setItem('VT Database_roles', JSON.stringify(rolesData)); } catch(e) {}
   // Upsert all non-system roles to Supabase
   const toSave = rolesData.filter(r => !r.isSystem);
   toSave.forEach(r => {
-    fetch(`${SUPA_URL}/rest/v1/harman_roles`, {
+    fetch(`${SUPA_URL}/rest/v1/VT Database_roles`, {
       method: 'POST',
       headers: {
         'apikey': SUPA_KEY,
@@ -5229,7 +5229,7 @@ function saveRolesToStorage() {
 
 async function loadRolesFromSupabase() {
   try {
-    const res = await fetch(`${SUPA_URL}/rest/v1/harman_roles?select=*`, {
+    const res = await fetch(`${SUPA_URL}/rest/v1/VT Database_roles?select=*`, {
       headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}` }
     });
     if (!res.ok) throw new Error('Supabase roles fetch failed');
@@ -5243,7 +5243,7 @@ async function loadRolesFromSupabase() {
       permissions: r.permissions || {}
     }));
     rolesData = [...sysRoles, ...nonSystem];
-    try { localStorage.setItem('harman_roles', JSON.stringify(rolesData)); } catch(e) {}
+    try { localStorage.setItem('VT Database_roles', JSON.stringify(rolesData)); } catch(e) {}
   } catch(e) {
     loadRolesFromStorage();
   } finally {
@@ -5254,7 +5254,7 @@ async function loadRolesFromSupabase() {
 
 function loadRolesFromStorage() {
   try {
-    const saved = localStorage.getItem('harman_roles');
+    const saved = localStorage.getItem('VT Database_roles');
     if (!saved) return;
     const parsed = JSON.parse(saved);
     const sysRoles  = rolesData.filter(r => r.isSystem);
@@ -5264,7 +5264,7 @@ function loadRolesFromStorage() {
 }
 
 // ── ACTIVITY LOG ──
-const LOG_KEY = 'harman_activity_log';
+const LOG_KEY = 'VT Database_activity_log';
 const LOG_ICONS = { add:'➕', edit:'✏️', delete:'🗑', merge:'🔀', upload:'📁', login:'🔑', other:'📌' };
 const LOG_LABELS = {
   add: 'Eklendi', edit: 'Düzenlendi', delete: 'Silindi',
@@ -5478,40 +5478,40 @@ async function saveToStorage() {
 
 function saveToLocalStorage() {
   try {
-    localStorage.setItem('harman_companies',  JSON.stringify(companies));
-    localStorage.setItem('harman_campaigns',  JSON.stringify(campaigns));
-    localStorage.setItem('harman_files',      JSON.stringify(filesData));
-    localStorage.setItem('harman_sources',    JSON.stringify(sourcesData));
-    localStorage.setItem('harman_duplicates', JSON.stringify(duplicatesData));
-    localStorage.setItem('harman_auth',       JSON.stringify(currentUser));
-    localStorage.setItem('harman_users',      JSON.stringify(usersData));
+    localStorage.setItem('VT Database_companies',  JSON.stringify(companies));
+    localStorage.setItem('VT Database_campaigns',  JSON.stringify(campaigns));
+    localStorage.setItem('VT Database_files',      JSON.stringify(filesData));
+    localStorage.setItem('VT Database_sources',    JSON.stringify(sourcesData));
+    localStorage.setItem('VT Database_duplicates', JSON.stringify(duplicatesData));
+    localStorage.setItem('VT Database_auth',       JSON.stringify(currentUser));
+    localStorage.setItem('VT Database_users',      JSON.stringify(usersData));
   } catch(e) { console.warn('localStorage write failed', e); }
 }
 
 // Always persist these to localStorage regardless of Supabase status
 function saveLocalOnly() {
   try {
-    localStorage.setItem('harman_duplicates', JSON.stringify(duplicatesData));
-    localStorage.setItem('harman_files',      JSON.stringify(filesData));
-    localStorage.setItem('harman_sources',    JSON.stringify(sourcesData));
-    localStorage.setItem('harman_auth',       JSON.stringify(currentUser));
-    localStorage.setItem('harman_users',      JSON.stringify(usersData));
+    localStorage.setItem('VT Database_duplicates', JSON.stringify(duplicatesData));
+    localStorage.setItem('VT Database_files',      JSON.stringify(filesData));
+    localStorage.setItem('VT Database_sources',    JSON.stringify(sourcesData));
+    localStorage.setItem('VT Database_auth',       JSON.stringify(currentUser));
+    localStorage.setItem('VT Database_users',      JSON.stringify(usersData));
   } catch(e) {}
 }
 
 function loadLocalOnlyData() {
   try {
-    const du = localStorage.getItem('harman_duplicates');
+    const du = localStorage.getItem('VT Database_duplicates');
     if (window.dbgLog) dbgLog('LOAD LS=' + (du ? JSON.parse(du).length : 'null') + ' mem=' + duplicatesData.length);
     if (du) { duplicatesData.length = 0; JSON.parse(du).forEach(x => duplicatesData.push(x)); }
     if (window.dbgLog) dbgLog('  after load=' + duplicatesData.length);
-    const fi = localStorage.getItem('harman_files');
+    const fi = localStorage.getItem('VT Database_files');
     if (fi) { filesData.length = 0; JSON.parse(fi).forEach(x => filesData.push(x)); }
-    const so = localStorage.getItem('harman_sources');
+    const so = localStorage.getItem('VT Database_sources');
     if (so) { sourcesData.length = 0; JSON.parse(so).forEach(x => sourcesData.push(x)); }
-    const au = localStorage.getItem('harman_auth');
+    const au = localStorage.getItem('VT Database_auth');
     if (au) { const p = JSON.parse(au); currentUser.username = p.username; currentUser.password = p.password; }
-    const ud = localStorage.getItem('harman_users');
+    const ud = localStorage.getItem('VT Database_users');
     if (ud) { usersData.length = 0; JSON.parse(ud).forEach(x => usersData.push(x)); }
   } catch(e) {}
 }
@@ -5586,13 +5586,13 @@ async function loadFromStorage() {
 
       // Load users from Supabase
       try {
-        const userRows = await fetch(`${SUPA_URL}/rest/v1/harman_users?select=*`, {
+        const userRows = await fetch(`${SUPA_URL}/rest/v1/VT Database_users?select=*`, {
           headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}` }
         }).then(r => r.ok ? r.json() : []);
         if (userRows.length) {
           usersData.length = 0;
           userRows.forEach(r => usersData.push({ username: r.username, password: r.password, role: r.role || 'viewer' }));
-          localStorage.setItem('harman_users', JSON.stringify(usersData));
+          localStorage.setItem('VT Database_users', JSON.stringify(usersData));
         }
       } catch(e) { console.warn('Users load failed', e); }
 
@@ -5606,19 +5606,19 @@ async function loadFromStorage() {
 
   // localStorage fallback
   try {
-    const co = localStorage.getItem('harman_companies');
+    const co = localStorage.getItem('VT Database_companies');
     if (co) { companies.length = 0; JSON.parse(co).forEach(x => companies.push(x)); }
-    const ca = localStorage.getItem('harman_campaigns');
+    const ca = localStorage.getItem('VT Database_campaigns');
     if (ca) { campaigns.length = 0; JSON.parse(ca).forEach(x => campaigns.push(x)); }
-    const fi = localStorage.getItem('harman_files');
+    const fi = localStorage.getItem('VT Database_files');
     if (fi) { filesData.length = 0; JSON.parse(fi).forEach(x => filesData.push(x)); }
-    const so = localStorage.getItem('harman_sources');
+    const so = localStorage.getItem('VT Database_sources');
     if (so) { sourcesData.length = 0; JSON.parse(so).forEach(x => sourcesData.push(x)); }
-    const du = localStorage.getItem('harman_duplicates');
+    const du = localStorage.getItem('VT Database_duplicates');
     if (du) { duplicatesData.length = 0; JSON.parse(du).forEach(x => duplicatesData.push(x)); }
-    const au = localStorage.getItem('harman_auth');
+    const au = localStorage.getItem('VT Database_auth');
     if (au) { const p = JSON.parse(au); currentUser.username = p.username; currentUser.password = p.password; }
-    const ud = localStorage.getItem('harman_users');
+    const ud = localStorage.getItem('VT Database_users');
     if (ud) { usersData.length = 0; JSON.parse(ud).forEach(x => usersData.push(x)); }
   } catch(e) { console.warn('localStorage read failed', e); }
 }
@@ -5640,13 +5640,13 @@ function showToast(msg) {
 
 // ── INIT ──
 // Clear old blacklist storage key (no longer used)
-try { localStorage.removeItem('harman_dup_blacklist'); } catch(e) {}
+try { localStorage.removeItem('VT Database_dup_blacklist'); } catch(e) {}
 
 loadRolesFromStorage(); // Sync fallback first
 loadFromStorage().then(() => {
   renderList();
   // Push default admin to Supabase if not already there
-  fetch(`${SUPA_URL}/rest/v1/harman_users`, {
+  fetch(`${SUPA_URL}/rest/v1/VT Database_users`, {
     method: 'POST',
     headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'resolution=ignore-duplicates,return=minimal' },
     body: JSON.stringify(usersData.map(u => ({ username: u.username, password: u.password, role: u.role || 'admin' })))
