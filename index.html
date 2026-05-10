@@ -2010,6 +2010,7 @@ window.dbgLog = function(msg) {
             <option value="login">🔑 Giriş</option>
           </select>
           <button class="btn btn-ghost" onclick="clearOldLogs()" style="font-size:11px">🧹 1 aydan eskiyi temizle</button>
+          <button class="btn btn-ghost" onclick="clearAllLogs()" style="font-size:11px;color:var(--red)">🗑 Tümünü Sil</button>
         </div>
       </div>
       <div style="flex:1;overflow-y:auto;padding:16px;scrollbar-width:thin;scrollbar-color:var(--surface3) transparent">
@@ -5272,43 +5273,66 @@ const LOG_LABELS = {
 };
 
 function addLog(type, resource, detail) {
-  const logs = getLogsRaw();
-  logs.unshift({
-    id:       Date.now(),
+  const id = Date.now();
+  const entry = {
+    id,
     type,
     resource,
     detail,
     user:     currentUser.username || '?',
     ts:       new Date().toISOString(),
-  });
-  // Keep only last 30 days
+  };
+  // Local
+  const logs = getLogsRaw();
+  logs.unshift(entry);
   const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
-  const trimmed = logs.filter(l => new Date(l.ts).getTime() > cutoff);
-  try { localStorage.setItem(LOG_KEY, JSON.stringify(trimmed)); } catch(e) {}
+  try { localStorage.setItem(LOG_KEY, JSON.stringify(logs.filter(l => new Date(l.ts).getTime() > cutoff))); } catch(e) {}
+  // Supabase
+  fetch(`${SUPA_URL}/rest/v1/activity_logs`, {
+    method: 'POST',
+    headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+    body: JSON.stringify({ id, type, resource, detail, username: entry.user, created_at: entry.ts })
+  }).catch(console.warn);
 }
 
 function getLogsRaw() {
   try { return JSON.parse(localStorage.getItem(LOG_KEY) || '[]'); } catch(e) { return []; }
 }
 
-function renderLogs() {
+async function renderLogs() {
   const el = document.getElementById('logList');
   if (!el) return;
+  el.innerHTML = '<div style="text-align:center;color:var(--muted);padding:40px;font-size:12px">Yükleniyor...</div>';
+
+  let logs = [];
+  try {
+    const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    const res = await fetch(`${SUPA_URL}/rest/v1/activity_logs?created_at=gte.${cutoff}&order=created_at.desc&limit=500`, {
+      headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}` }
+    });
+    if (res.ok) {
+      const rows = await res.json();
+      logs = rows.map(r => ({ id: r.id, type: r.type, resource: r.resource, detail: r.detail, user: r.username, ts: r.created_at }));
+      // Sync to localStorage
+      try { localStorage.setItem(LOG_KEY, JSON.stringify(logs)); } catch(e) {}
+    } else { throw new Error(); }
+  } catch(e) {
+    // Fallback to localStorage
+    const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
+    logs = getLogsRaw().filter(l => new Date(l.ts).getTime() > cutoff);
+  }
 
   // Populate user filter
   const userSel = document.getElementById('logFilterUser');
   if (userSel) {
     const cur = userSel.value;
-    const users = [...new Set(getLogsRaw().map(l => l.user))];
+    const users = [...new Set(logs.map(l => l.user))];
     userSel.innerHTML = '<option value="all">Tüm Kullanıcılar</option>' +
       users.map(u => `<option value="${u}" ${u===cur?'selected':''}>${u}</option>`).join('');
   }
 
   const filterUser = document.getElementById('logFilterUser')?.value || 'all';
   const filterType = document.getElementById('logFilterType')?.value || 'all';
-
-  const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
-  let logs = getLogsRaw().filter(l => new Date(l.ts).getTime() > cutoff);
   if (filterUser !== 'all') logs = logs.filter(l => l.user === filterUser);
   if (filterType !== 'all') logs = logs.filter(l => l.type === filterType);
 
@@ -5317,7 +5341,6 @@ function renderLogs() {
     return;
   }
 
-  // Group by date
   const groups = {};
   logs.forEach(l => {
     const d = new Date(l.ts);
@@ -5331,13 +5354,8 @@ function renderLogs() {
       <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;padding:0 4px">${date}</div>
       ${items.map(l => {
         const icon = LOG_ICONS[l.type] || LOG_ICONS.other;
-        const label = LOG_LABELS[l.type] || 'İşlem';
         const time = new Date(l.ts).toLocaleTimeString('tr-TR', { hour:'2-digit', minute:'2-digit' });
-        const resLabel = {
-          companies:'Şirket', campaigns:'Kampanya', files:'Dosya',
-          duplicates:"Duplicate", suggestions:'Öneri', users:'Kullanıcı',
-          roles:'Rol'
-        }[l.resource] || l.resource;
+        const resLabel = { companies:'Şirket', campaigns:'Kampanya', files:'Dosya', duplicates:'Duplicate', suggestions:'Öneri', users:'Kullanıcı', roles:'Rol' }[l.resource] || l.resource;
         return `
         <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;margin-bottom:6px">
           <div style="width:32px;height:32px;background:var(--surface2);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0">${icon}</div>
@@ -5349,15 +5367,40 @@ function renderLogs() {
               <span style="font-size:10px;color:var(--muted)">${time}</span>
             </div>
           </div>
+          <button onclick="deleteLog(${l.id})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;padding:0 4px;flex-shrink:0;opacity:0.5" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.5">✕</button>
         </div>`;
       }).join('')}
     </div>`).join('');
 }
+function deleteLog(id) {
+  const logs = getLogsRaw().filter(l => l.id !== id);
+  try { localStorage.setItem(LOG_KEY, JSON.stringify(logs)); } catch(e) {}
+  fetch(`${SUPA_URL}/rest/v1/activity_logs?id=eq.${id}`, {
+    method: 'DELETE',
+    headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}` }
+  }).catch(console.warn);
+  renderLogs();
+}
+
+function clearAllLogs() {
+  if (!confirm('Tüm loglar silinsin mi?')) return;
+  try { localStorage.setItem(LOG_KEY, JSON.stringify([])); } catch(e) {}
+  fetch(`${SUPA_URL}/rest/v1/activity_logs?id=gte.0`, {
+    method: 'DELETE',
+    headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}` }
+  }).catch(console.warn);
+  renderLogs();
+  showToast('✓ Tüm loglar silindi');
+}
 
 function clearOldLogs() {
-  const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
-  const logs = getLogsRaw().filter(l => new Date(l.ts).getTime() > cutoff);
+  const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const logs = getLogsRaw().filter(l => l.ts >= cutoff);
   try { localStorage.setItem(LOG_KEY, JSON.stringify(logs)); } catch(e) {}
+  fetch(`${SUPA_URL}/rest/v1/activity_logs?created_at=lt.${cutoff}`, {
+    method: 'DELETE',
+    headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}` }
+  }).catch(console.warn);
   renderLogs();
   showToast('✓ Eski loglar temizlendi');
 }
