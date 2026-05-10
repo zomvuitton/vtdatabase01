@@ -991,6 +991,8 @@
     padding: 20px;
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    grid-auto-rows: max-content;
+    align-items: start;
     gap: 14px;
     align-content: start;
     scrollbar-width: thin;
@@ -3492,51 +3494,46 @@ function closeFileModal(e) {
     document.getElementById('fileDetailModal').classList.remove('open');
 }
 
-async function quickDownload(id) {
-  const f = filesData.find(x => String(x.id) === String(id));
-  if (!f) return;
-  const url = f.publicUrl || f.objectUrl;
-  if (!url) { showToast('İndirme linki yok, dosyayı tekrar yükleyin.'); return; }
-  showToast('⏳ İndiriliyor...');
-  try {
-    const res = await fetch(url);
-    const blob = await res.blob();
-    const blobUrl = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = blobUrl;
-    a.download = f.originalName || f.name + '.' + f.type;
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
-    showToast('✓ İndirildi');
-  } catch(e) {
-    window.open(url, '_blank');
-    showToast('✓ Yeni sekmede açıldı');
+const R2_WORKER_URL = 'https://databaseuploader.atahan-d1c.workers.dev/';
+const R2_PUBLIC_PREFIX = 'https://pub-ae9a40f9b6ce4ea4840a052480f36386.r2.dev/';
+
+function getDownloadUrl(f) {
+  if (f.publicUrl && f.publicUrl.includes(R2_PUBLIC_PREFIX.replace('https://',''))) {
+    const path = f.publicUrl.split('r2.dev/')[1];
+    return R2_WORKER_URL + path;
   }
+  return f.publicUrl || f.objectUrl || null;
 }
 
-async function downloadFile() {
+function quickDownload(id) {
+  const f = filesData.find(x => String(x.id) === String(id));
+  if (!f) return;
+  const url = getDownloadUrl(f);
+  if (!url) { showToast('İndirme linki yok, dosyayı tekrar yükleyin.'); return; }
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = f.originalName || f.name + '.' + f.type;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  showToast('✓ İndiriliyor...');
+}
+
+function downloadFile() {
   const f = filesData.find(x => x.id === selectedFileId || String(x.id) === String(selectedFileId));
   if (!f) return;
-  const url = f.publicUrl || f.objectUrl;
+  const url = getDownloadUrl(f);
   if (!url) {
     showToast('İndirme linki yok. Dosyayı tekrar yükleyin.');
     return;
   }
-  showToast('⏳ İndiriliyor...');
-  try {
-    const res = await fetch(url);
-    const blob = await res.blob();
-    const blobUrl = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = blobUrl;
-    a.download = (f.originalName || f.name + '.' + f.type);
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
-    showToast('✓ İndirildi');
-  } catch(e) {
-    window.open(url, '_blank');
-    showToast('✓ Yeni sekmede açıldı');
-  }
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = (f.originalName || f.name + '.' + f.type);
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  showToast('✓ İndiriliyor...');
 }
 
 function saveFileEdit() {
@@ -3575,18 +3572,10 @@ function deleteSelectedFile() {
   saveToStorage();
   supabaseDelete('assets', selectedFileId);
   addLog('delete','files', `"${deletedFileName}" dosyası silindi`);
-  // Also delete from Storage if has publicUrl
-  if (f && f.publicUrl && supaOk) {
-    const path = f.publicUrl.split('/harman-files/')[1];
-    if (path) fetch(SUPA_URL + '/storage/v1/object/harman-files', {
-      method: 'DELETE',
-      headers: {
-        'apikey': SUPA_KEY,
-        'Authorization': 'Bearer ' + SUPA_KEY,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ prefixes: [path] }),
-    }).catch(()=>{});
+  // Also delete from R2 if has publicUrl
+  if (f && f.publicUrl && f.publicUrl.includes('r2.dev/')) {
+    const path = f.publicUrl.split('r2.dev/')[1];
+    if (path) fetch(R2_WORKER_URL + path, { method: 'DELETE' }).catch(()=>{});
   }
   document.getElementById('fileDetailModal').classList.remove('open');
   renderFiles();
