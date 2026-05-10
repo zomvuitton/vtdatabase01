@@ -3607,38 +3607,36 @@ async function handleFileUpload(input) {
   addLog('upload','files', `${uploadedFiles.length} dosya yüklendi: ${fileNames.length > 60 ? fileNames.substring(0,60)+'...' : fileNames}`);
   showToast('⏳ ' + uploadedFiles.length + ' dosya eklendi, yükleniyor...');
 
-  // Step 2: Upload to Supabase Storage in background
-  if (supaOk) {
-    let uploaded = 0;
-    for (const entry of newEntries) {
-      try {
-        const filePath = Date.now() + '_' + entry.originalName.replace(/[^a-zA-Z0-9._-]/g, '_');
-        const res = await fetch(
-          SUPA_URL + '/storage/v1/object/harman-files/' + filePath,
-          {
-            method: 'POST',
-            headers: {
-              'apikey': SUPA_KEY,
-              'Authorization': 'Bearer ' + SUPA_KEY,
-              'Content-Type': entry._file.type || 'application/octet-stream',
-              'x-upsert': 'true',
-            },
-            body: entry._file,
-          }
-        );
-        if (res.ok) {
-          entry.publicUrl = SUPA_URL + '/storage/v1/object/public/harman-files/' + filePath;
+  // Step 2: Upload to Cloudflare R2 via Worker
+  const R2_WORKER = 'https://databaseuploader.atahan-d1c.workers.dev/';
+  let uploaded = 0;
+  for (const entry of newEntries) {
+    try {
+      const res = await fetch(R2_WORKER, {
+        method: 'POST',
+        headers: {
+          'Content-Type': entry._file.type || 'application/octet-stream',
+          'X-File-Name': entry.originalName,
+        },
+        body: entry._file,
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.url) {
+          entry.publicUrl = data.url;
           uploaded++;
         }
-      } catch(e) {
-        console.warn('Storage upload error:', e);
       }
-      delete entry._file; // clean up file reference
+    } catch(e) {
+      console.warn('R2 upload error:', e);
     }
-    saveToStorage();
-    renderFiles();
-    showToast('✓ ' + uploaded + '/' + newEntries.length + ' dosya Supabase yüklendi');
-    pushNotif(`<strong>${uploaded}</strong> dosya Supabase'e yüklendi`, '☁️');
+    delete entry._file; // clean up file reference
+  }
+  saveToStorage();
+  renderFiles();
+  if (uploaded > 0) {
+    showToast('✓ ' + uploaded + '/' + newEntries.length + ' dosya R2\'ye yüklendi');
+    pushNotif(`<strong>${uploaded}</strong> dosya buluta yüklendi`, '☁️');
   } else {
     showToast('✓ ' + uploadedFiles.length + ' dosya eklendi (yerel)');
   }
