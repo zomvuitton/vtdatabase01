@@ -986,6 +986,7 @@
 
   .files-grid {
     flex: 1;
+    min-height: 0;
     overflow-y: auto;
     padding: 20px;
     display: grid;
@@ -1791,7 +1792,7 @@ window.dbgLog = function(msg) {
             <input class="search-input" style="padding-left:30px;font-size:12px;width:220px" placeholder="Dosya ara..." oninput="filterFiles(this.value)" id="fileSearchInput">
           </div>
           <button class="btn btn-primary" onclick="if(!can('files','add')){noPermToast();return;}document.getElementById('fileUploadInput').click()">↑ Dosya Yükle</button>
-          <input type="file" id="fileUploadInput" style="display:none" multiple accept=".pptx,.psd,.pdf,.key,.ai,.sketch" onchange="handleFileUpload(this)">
+          <input type="file" id="fileUploadInput" style="display:none" multiple onchange="handleFileUpload(this)">
         </div>
       </div>
 
@@ -3491,17 +3492,29 @@ function closeFileModal(e) {
     document.getElementById('fileDetailModal').classList.remove('open');
 }
 
-function quickDownload(id) {
+async function quickDownload(id) {
   const f = filesData.find(x => String(x.id) === String(id));
   if (!f) return;
   const url = f.publicUrl || f.objectUrl;
   if (!url) { showToast('İndirme linki yok, dosyayı tekrar yükleyin.'); return; }
-  const a = document.createElement('a');
-  a.href = url; a.download = f.originalName || f.name + '.' + f.type; a.target = '_blank'; a.click();
-  showToast('✓ İndiriliyor...');
+  showToast('⏳ İndiriliyor...');
+  try {
+    const res = await fetch(url);
+    const blob = await res.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = blobUrl;
+    a.download = f.originalName || f.name + '.' + f.type;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
+    showToast('✓ İndirildi');
+  } catch(e) {
+    window.open(url, '_blank');
+    showToast('✓ Yeni sekmede açıldı');
+  }
 }
 
-function downloadFile() {
+async function downloadFile() {
   const f = filesData.find(x => x.id === selectedFileId || String(x.id) === String(selectedFileId));
   if (!f) return;
   const url = f.publicUrl || f.objectUrl;
@@ -3509,12 +3522,21 @@ function downloadFile() {
     showToast('İndirme linki yok. Dosyayı tekrar yükleyin.');
     return;
   }
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = (f.originalName || f.name + '.' + f.type);
-  a.target = '_blank';
-  a.click();
-  showToast('✓ İndiriliyor...');
+  showToast('⏳ İndiriliyor...');
+  try {
+    const res = await fetch(url);
+    const blob = await res.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = blobUrl;
+    a.download = (f.originalName || f.name + '.' + f.type);
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
+    showToast('✓ İndirildi');
+  } catch(e) {
+    window.open(url, '_blank');
+    showToast('✓ Yeni sekmede açıldı');
+  }
 }
 
 function saveFileEdit() {
