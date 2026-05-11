@@ -1802,7 +1802,7 @@ window.dbgLog = function(msg) {
         <div class="files-toolbar">
           <select id="typeSelect" onchange="setFileFilter(this.value)"
             style="background:var(--surface2);border:1px solid var(--border);border-radius:20px;color:var(--muted2);font-family:var(--font-mono);font-size:11px;padding:5px 14px;outline:none;cursor:pointer;height:30px">
-            <option value="all">Tüm Türler <span id="fcnt-all"></span></option>
+            <option value="all">Tüm Türler</option>
             <option value="sunum">📊 Sunum</option>
             <option value="pdf">📄 PDF</option>
             <option value="tasarim">🎨 Tasarım</option>
@@ -3400,7 +3400,12 @@ function getFilteredFiles() {
 function renderFiles() {
   const grid = document.getElementById('filesGrid');
   const list = getFilteredFiles();
-  document.getElementById('fcnt-all').textContent = filesData.length;
+  // Update type dropdown text with count
+  const typeSel = document.getElementById('typeSelect');
+  if (typeSel) {
+    const firstOpt = typeSel.querySelector('option[value="all"]');
+    if (firstOpt) firstOpt.textContent = `Tüm Türler (${filesData.length})`;
+  }
 
   // Populate year filter dropdown dynamically
   const yearSel = document.getElementById('yearSelect');
