@@ -5511,11 +5511,20 @@ async function saveToStorage() {
       const dbAssets = filesData.map(f => ({
         id:          String(f.id),
         name:        f.name,
-        file_url:    f.name,
+        file_url:    f.publicUrl || f.name,
         file_type:   ['pptx','psd','pdf'].includes(f.type) ? f.type : 'other',
         year:        f.year || null,
         tags:        f.tags || [],
-        description: JSON.stringify({ size: f.size, uploadedAt: f.uploadedAt }),
+        description: JSON.stringify({
+          size:         f.size,
+          uploadedAt:   f.uploadedAt,
+          uploadedBy:   f.uploadedBy || '',
+          desc:         f.description || '',
+          originalName: f.originalName || '',
+          publicUrl:    f.publicUrl || null,
+          visibleTo:    f.visibleTo || [],
+          realType:     f.type,
+        }),
       }));
       const dbA = await supa.from('assets');
       await dbA.upsert(dbAssets);
@@ -5623,13 +5632,18 @@ async function loadFromStorage() {
         assetRows.forEach(r => {
           const extra = (() => { try { return JSON.parse(r.description||'{}'); } catch(e) { return {}; } })();
           filesData.push({
-            id:         r.id,
-            name:       r.name,
-            type:       r.file_type || 'other',
-            year:       r.year || new Date().getFullYear(),
-            size:       extra.size || '—',
-            tags:       r.tags || [],
-            uploadedAt: extra.uploadedAt || '—',
+            id:           r.id,
+            name:         r.name,
+            type:         extra.realType || r.file_type || 'other',
+            year:         r.year || new Date().getFullYear(),
+            size:         extra.size || '—',
+            tags:         r.tags || [],
+            uploadedAt:   extra.uploadedAt || '—',
+            uploadedBy:   extra.uploadedBy || '',
+            description:  extra.desc || '',
+            originalName: extra.originalName || r.name,
+            publicUrl:    extra.publicUrl || (r.file_url && r.file_url.startsWith('http') ? r.file_url : null),
+            visibleTo:    extra.visibleTo || [],
           });
         });
       }
