@@ -3494,7 +3494,7 @@ function closeFileModal(e) {
     document.getElementById('fileDetailModal').classList.remove('open');
 }
 
-const R2_WORKER_URL = 'https://uploader.atahan-d1c.workers.dev/';
+const R2_WORKER_URL = 'https://bucket.akharman.com/';
 const R2_PUBLIC_PREFIX = 'https://pub-ae9a40f9b6ce4ea4840a052480f36386.r2.dev/';
 
 function getDownloadUrl(f) {
@@ -3623,7 +3623,7 @@ async function handleFileUpload(input) {
   showToast('⏳ ' + uploadedFiles.length + ' dosya eklendi, yükleniyor...');
 
   // Step 2: Upload to Cloudflare R2 via Worker
-  const R2_WORKER = 'https://uploader.atahan-d1c.workers.dev/';
+  const R2_WORKER = 'https://bucket.akharman.com/';
   let uploaded = 0;
   for (const entry of newEntries) {
     try {
