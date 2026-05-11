@@ -3675,10 +3675,18 @@ async function handleFileUpload(input) {
         if (data.url) {
           entry.publicUrl = data.url;
           uploaded++;
+        } else {
+          console.error('R2 no URL:', data);
+          showToast('⚠️ R2 hata: ' + JSON.stringify(data));
         }
+      } else {
+        const errText = await res.text();
+        console.error('R2 non-ok:', res.status, errText);
+        showToast('⚠️ R2 ' + res.status + ': ' + errText.substring(0,100));
       }
     } catch(e) {
-      console.warn('R2 upload error:', e);
+      console.error('R2 fetch error:', e);
+      showToast('⚠️ R2 bağlantı hatası: ' + e.message);
     }
     delete entry._file; // clean up file reference
   }
