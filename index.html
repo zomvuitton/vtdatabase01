@@ -3666,7 +3666,7 @@ async function handleFileUpload(input) {
         method: 'POST',
         headers: {
           'Content-Type': entry._file.type || 'application/octet-stream',
-          'X-File-Name': entry.originalName,
+          'X-File-Name': encodeURIComponent(entry.originalName),
         },
         body: entry._file,
       });
@@ -3677,18 +3677,18 @@ async function handleFileUpload(input) {
           uploaded++;
         } else {
           console.error('R2 no URL:', data);
-          showToast('⚠️ R2 hata: ' + JSON.stringify(data));
+          alert('R2 hata - URL yok: ' + JSON.stringify(data));
         }
       } else {
         const errText = await res.text();
         console.error('R2 non-ok:', res.status, errText);
-        showToast('⚠️ R2 ' + res.status + ': ' + errText.substring(0,100));
+        alert('R2 HTTP ' + res.status + ':\n' + errText.substring(0, 300));
       }
     } catch(e) {
       console.error('R2 fetch error:', e);
-      showToast('⚠️ R2 bağlantı hatası: ' + e.message);
+      alert('R2 bağlantı hatası:\n' + e.message);
     }
-    delete entry._file; // clean up file reference
+    delete entry._file;
   }
   saveToStorage();
   renderFiles();
@@ -3696,7 +3696,7 @@ async function handleFileUpload(input) {
     showToast('✓ ' + uploaded + '/' + newEntries.length + ' dosya R2\'ye yüklendi');
     pushNotif(`<strong>${uploaded}</strong> dosya buluta yüklendi`, '☁️');
   } else {
-    showToast('✓ ' + uploadedFiles.length + ' dosya eklendi (yerel)');
+    showToast('⚠️ Yükleme başarısız — loglara bakın');
   }
 }
 
