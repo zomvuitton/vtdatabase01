@@ -1800,11 +1800,20 @@ window.dbgLog = function(msg) {
 
       <div class="files-body">
         <div class="files-toolbar">
-          <div class="filter-chip active" onclick="setFileFilter('all',this)" style="font-size:11px;padding:4px 11px">Tümü <span class="filter-count" id="fcnt-all">0</span></div>
-          <div class="filter-chip" onclick="setFileFilter('pptx',this)" style="font-size:11px;padding:4px 11px">PPTX</div>
-          <div class="filter-chip" onclick="setFileFilter('psd',this)" style="font-size:11px;padding:4px 11px">PSD</div>
-          <div class="filter-chip" onclick="setFileFilter('pdf',this)" style="font-size:11px;padding:4px 11px">PDF</div>
-          <div class="filter-chip" onclick="setFileFilter('other',this)" style="font-size:11px;padding:4px 11px">Diğer</div>
+          <select id="typeSelect" onchange="setFileFilter(this.value)"
+            style="background:var(--surface2);border:1px solid var(--border);border-radius:20px;color:var(--muted2);font-family:var(--font-mono);font-size:11px;padding:5px 14px;outline:none;cursor:pointer;height:30px">
+            <option value="all">Tüm Türler <span id="fcnt-all"></span></option>
+            <option value="sunum">📊 Sunum</option>
+            <option value="pdf">📄 PDF</option>
+            <option value="tasarim">🎨 Tasarım</option>
+            <option value="gorsel">🖼️ Görsel</option>
+            <option value="dokuman">📝 Döküman</option>
+            <option value="kod">⚙️ Web / Kod</option>
+            <option value="video">🎬 Video</option>
+            <option value="ses">🎵 Ses</option>
+            <option value="arsiv">📦 Arşiv</option>
+            <option value="other">📁 Diğer</option>
+          </select>
           <div style="width:1px;height:20px;background:var(--border);flex-shrink:0"></div>
           <select id="yearSelect" onchange="setFileYearSelect(this.value)"
             style="background:var(--surface2);border:1px solid var(--border);border-radius:20px;color:var(--muted2);font-family:var(--font-mono);font-size:11px;padding:5px 14px;outline:none;cursor:pointer;height:30px">
@@ -3293,7 +3302,41 @@ function downloadReport() {
 }
 
 // ── FILES DATA ──
-const fileTypeEmoji = { pptx:'📊', psd:'🎨', pdf:'📄', key:'📊', ai:'✏️', sketch:'💎', other:'📁' };
+const fileTypeEmoji = {
+  // Sunum
+  pptx:'📊', ppt:'📊', key:'📊',
+  // PDF
+  pdf:'📄',
+  // Tasarım
+  psd:'🎨', ai:'✏️', sketch:'💎', figma:'🎨', xd:'🎨', svg:'🖼️',
+  // Görsel
+  jpg:'🖼️', jpeg:'🖼️', png:'🖼️', gif:'🖼️', webp:'🖼️', heic:'🖼️', tiff:'🖼️', bmp:'🖼️', ico:'🖼️',
+  // Döküman
+  doc:'📝', docx:'📝', txt:'📝', md:'📝', csv:'📊', xls:'📊', xlsx:'📊', rtf:'📝',
+  // Web / Kod
+  html:'🌐', css:'🌐', js:'⚙️', ts:'⚙️', jsx:'⚙️', tsx:'⚙️', json:'⚙️', xml:'📋',
+  py:'🐍', php:'⚙️', rb:'⚙️', java:'⚙️', swift:'⚙️', kt:'⚙️', go:'⚙️', sh:'⚙️',
+  // Video
+  mp4:'🎬', mov:'🎬', avi:'🎬', mkv:'🎬', webm:'🎬',
+  // Ses
+  mp3:'🎵', wav:'🎵', aac:'🎵', flac:'🎵', m4a:'🎵',
+  // Arşiv
+  zip:'📦', rar:'📦', '7z':'📦', tar:'📦', gz:'📦',
+  // Fallback
+  other:'📁',
+};
+
+const fileTypeCategories = {
+  sunum:   ['pptx','ppt','key'],
+  pdf:     ['pdf'],
+  tasarim: ['psd','ai','sketch','figma','xd','svg'],
+  gorsel:  ['jpg','jpeg','png','gif','webp','heic','tiff','bmp','ico'],
+  dokuman: ['doc','docx','txt','md','csv','xls','xlsx','rtf'],
+  kod:     ['html','css','js','ts','jsx','tsx','json','xml','py','php','rb','java','swift','kt','go','sh'],
+  video:   ['mp4','mov','avi','mkv','webm'],
+  ses:     ['mp3','wav','aac','flac','m4a'],
+  arsiv:   ['zip','rar','7z','tar','gz'],
+};
 
 let filesData = [];
 
@@ -3305,14 +3348,10 @@ let selectedFileId  = null;
 let nextId          = 200;
 let nextFileId      = 11;
 
-function setFileFilter(type, el) {
+function setFileFilter(type) {
   activeFileType = type;
-  document.querySelectorAll('#screen-files .files-toolbar .filter-chip').forEach(c => {
-    if (['all','pptx','psd','pdf','other'].some(t => c.getAttribute('onclick') && c.getAttribute('onclick').includes("'"+t+"'"))) {
-      c.classList.remove('active');
-    }
-  });
-  el.classList.add('active');
+  const sel = document.getElementById('typeSelect');
+  if (sel) sel.value = type;
   renderFiles();
 }
 
@@ -3346,7 +3385,9 @@ function getFilteredFiles() {
   return filesData.filter(f => {
     // Visibility check: if visibleTo is set and non-empty, only show to those roles
     if (f.visibleTo && f.visibleTo.length > 0 && !f.visibleTo.includes(myRole)) return false;
-    const matchType = activeFileType === 'all' || f.type === activeFileType;
+    const matchType = activeFileType === 'all' ||
+      f.type === activeFileType ||
+      (fileTypeCategories[activeFileType] && fileTypeCategories[activeFileType].includes(f.type));
     const matchYear = activeFileYear === 'all' || String(f.year) === activeFileYear;
     const matchTag  = activeFileTag  === 'all' || f.tags.includes(activeFileTag);
     const matchSearch = !fileSearchQuery ||
@@ -3583,7 +3624,7 @@ async function handleFileUpload(input) {
   const newEntries = [];
   for (const file of uploadedFiles) {
     const ext  = file.name.split('.').pop().toLowerCase();
-    const type = ['pptx','psd','pdf','key','ai','sketch'].includes(ext) ? ext : 'other';
+    const type = fileTypeEmoji[ext] ? ext : 'other';
     const size = file.size > 1048576
       ? (file.size/1048576).toFixed(1)+' MB'
       : (file.size/1024).toFixed(0)+' KB';
