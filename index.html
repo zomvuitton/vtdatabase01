@@ -3463,7 +3463,7 @@ function renderFiles() {
     <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileUploadInput').click()">
       <div class="drop-icon">☁️</div>
       <div class="drop-text">Dosya yüklemek için tıkla veya sürükle</div>
-      <div class="drop-sub">PPTX, PSD, PDF, AI, Sketch — maks. 200 MB</div>
+      <div class="drop-sub">Tüm dosya türleri — maks. 200 MB</div>
     </div>`;
 
   const emptyHTML = `<div style="grid-column:1/-1;text-align:center;color:var(--muted);padding:48px 20px;font-size:12px">
@@ -5769,6 +5769,10 @@ loadRolesFromStorage(); // Sync fallback first
 loadFromStorage().then(() => {
   renderList();
   enableLoginBtn();
+  // Re-render dashboard if it's the active screen
+  if (document.getElementById('screen-dashboard') && document.getElementById('screen-dashboard').classList.contains('active')) {
+    renderDashboard();
+  }
   // Push default admin to Supabase if not already there
   fetch(`${SUPA_URL}/rest/v1/harman_users`, {
     method: 'POST',
