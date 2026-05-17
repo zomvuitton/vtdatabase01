@@ -4391,15 +4391,13 @@ function filterHistoryByDate(history) {
 
 function renderDashboard() {
   const cutoff = getDashCutoff();
-  const total    = companies.length;
-  const dirty    = companies.filter(c => c.quality === 'dirty' || c.quality === 'incomplete').length;
+  const total = companies.length;
 
   let positive, negative;
   if (!cutoff) {
     positive = companies.filter(c => c.response === 'positive').length;
     negative = companies.filter(c => c.response === 'negative').length;
   } else {
-    // Count companies with a positive/negative history entry in range
     const positiveSet = new Set();
     const negativeSet = new Set();
     companies.forEach(c => {
@@ -4412,7 +4410,15 @@ function renderDashboard() {
     negative = negativeSet.size;
   }
 
-  const none = total - positive - negative;
+  // KPI dirty: tüm kirli/eksik şirketler (response bağımsız)
+  const dirty = companies.filter(c => c.quality === 'dirty' || c.quality === 'incomplete').length;
+
+  // Donut segmentleri birbirini kapsamamalı
+  const dirtyNoResponse = companies.filter(c =>
+    c.response !== 'positive' && c.response !== 'negative' &&
+    (c.quality === 'dirty' || c.quality === 'incomplete')
+  ).length;
+  const none = total - positive - negative - dirtyNoResponse;
 
   document.getElementById('kpi-total').textContent    = total;
   document.getElementById('kpi-positive').textContent = positive;
@@ -4421,7 +4427,7 @@ function renderDashboard() {
   document.getElementById('kpi-positive-rate').textContent = total ? `%${Math.round(positive/total*100)} dönüşüm oranı` : '—';
   document.getElementById('kpi-negative-rate').textContent = total ? `%${Math.round(negative/total*100)} ret oranı` : '—';
 
-  drawDonut(positive, negative, none < 0 ? 0 : none, dirty);
+  drawDonut(positive, negative, none < 0 ? 0 : none, dirtyNoResponse);
   renderSectorChart();
   renderActivity();
   renderSourceTable();
