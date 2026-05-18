@@ -2357,7 +2357,7 @@ window.dbgLog = function(msg) {
 
     <!-- MODAL: Kampanya Düzenle -->
     <div class="modal-overlay" id="editCampModal" onclick="if(event.target===this)closeEditCampModal()">
-      <div class="modal">
+      <div class="modal" style="max-width:600px;width:95vw;max-height:90vh;overflow-y:auto">
         <div class="modal-title">
           Kampanyayı Düzenle
           <button class="modal-close" onclick="closeEditCampModal()">✕</button>
@@ -2370,11 +2370,35 @@ window.dbgLog = function(msg) {
           <label class="form-label">Mail Konusu</label>
           <input class="form-input" id="ec-camp-subject" placeholder="Mail konusu">
         </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Gönderen Adı</label>
+            <input class="form-input" id="ec-camp-sender-name" placeholder="Atahan - AK Harman">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Gönderen Mail</label>
+            <input class="form-input" id="ec-camp-sender-email" placeholder="info@akharman.com">
+          </div>
+        </div>
         <div class="form-group">
           <label class="form-label">Mail İçeriği</label>
-          <textarea class="form-textarea" id="ec-camp-body" placeholder="Mail içeriği..."></textarea>
+          <textarea class="form-textarea" id="ec-camp-body" placeholder="Mail içeriği..." style="min-height:120px"></textarea>
         </div>
         <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Başlangıç Tarihi</label>
+            <input class="form-input" type="date" id="ec-camp-start-date">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Bitiş Tarihi</label>
+            <input class="form-input" type="date" id="ec-camp-end-date">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Günlük Limit</label>
+            <input class="form-input" type="number" id="ec-camp-daily-limit" placeholder="100" min="1" max="500">
+          </div>
           <div class="form-group">
             <label class="form-label">Durum</label>
             <select class="form-select" id="ec-camp-status">
@@ -2382,15 +2406,6 @@ window.dbgLog = function(msg) {
               <option value="scheduled">Planlandı</option>
               <option value="sent">Gönderildi</option>
               <option value="completed">Tamamlandı</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Hedef Segment</label>
-            <select class="form-select" id="ec-camp-segment">
-              <option value="all">Tüm Şirketler</option>
-              <option value="positive">Olumlu Dönüşler</option>
-              <option value="none">Dönüş Vermeyenler</option>
-              <option value="clean">Temiz Veri</option>
             </select>
           </div>
         </div>
@@ -4592,11 +4607,15 @@ function openEditCampaignModal(id) {
   const camp = campaigns.find(x => String(x.id) === String(id));
   if (!camp) return;
   selectedCampId = id;
-  document.getElementById('ec-camp-name').value    = camp.name;
-  document.getElementById('ec-camp-subject').value = camp.subject || '';
-  document.getElementById('ec-camp-body').value    = camp.body    || '';
-  document.getElementById('ec-camp-status').value  = camp.status  || 'draft';
-  document.getElementById('ec-camp-segment').value = camp.segment || 'all';
+  document.getElementById('ec-camp-name').value         = camp.name || '';
+  document.getElementById('ec-camp-subject').value      = camp.subject || '';
+  document.getElementById('ec-camp-body').value         = camp.body || '';
+  document.getElementById('ec-camp-status').value       = camp.status || 'draft';
+  document.getElementById('ec-camp-sender-name').value  = camp.senderName || '';
+  document.getElementById('ec-camp-sender-email').value = camp.senderEmail || '';
+  document.getElementById('ec-camp-daily-limit').value  = (camp.schedule && camp.schedule.dailyLimit) || 100;
+  document.getElementById('ec-camp-start-date').value   = (camp.schedule && camp.schedule.startDate) || '';
+  document.getElementById('ec-camp-end-date').value     = (camp.schedule && camp.schedule.endDate) || '';
   document.getElementById('editCampModal').classList.add('open');
 }
 
@@ -4610,13 +4629,19 @@ function saveEditCampaign() {
   if (!name) { document.getElementById('ec-camp-name').focus(); return; }
   const camp = campaigns.find(x => String(x.id) === String(selectedCampId));
   if (!camp) return;
-  camp.name    = name;
-  camp.subject = document.getElementById('ec-camp-subject').value.trim();
-  camp.body    = document.getElementById('ec-camp-body').value.trim();
-  camp.status  = document.getElementById('ec-camp-status').value;
-  camp.segment = document.getElementById('ec-camp-segment').value;
+  camp.name        = name;
+  camp.subject     = document.getElementById('ec-camp-subject').value.trim();
+  camp.body        = document.getElementById('ec-camp-body').value.trim();
+  camp.status      = document.getElementById('ec-camp-status').value;
+  camp.senderName  = document.getElementById('ec-camp-sender-name').value.trim();
+  camp.senderEmail = document.getElementById('ec-camp-sender-email').value.trim();
+  camp.schedule    = {
+    startDate:  document.getElementById('ec-camp-start-date').value,
+    endDate:    document.getElementById('ec-camp-end-date').value,
+    dailyLimit: parseInt(document.getElementById('ec-camp-daily-limit').value) || 100,
+  };
   saveToStorage();
-  addLog('edit','campaigns', `"${camp.name}" kampanyası düzenlendi`);
+  addLog('edit', 'campaigns', `"${camp.name}" kampanyası düzenlendi`);
   closeEditCampModal();
   renderCampList();
   selectCampaign(selectedCampId);
