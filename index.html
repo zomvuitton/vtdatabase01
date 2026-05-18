@@ -3901,16 +3901,35 @@ function renderCampList() {
 function selectCampaign(id) {
   selectedCampId = id;
   renderCampList();
-  const c   = campaigns.find(x => String(x.id) === String(id));
+  const c = campaigns.find(x => String(x.id) === String(id));
   const col = document.getElementById('campDetailCol');
-  const total  = c.sends.length;
-  const pos    = c.sends.filter(s => s.response === 'positive').length;
-  const neg    = c.sends.filter(s => s.response === 'negative').length;
-  const rate   = total ? Math.round(pos / total * 100) : 0;
-  const segLabels = { all:'Tüm Şirketler', positive:'Olumlu Dönüşler', none:'Dönüş Vermeyenler', clean:'Temiz Veri' };
+  if (!c) return;
 
-  const sendsHTML = c.sends.length
-    ? c.sends.map(s => `
+  const total  = (c.sends||[]).length;
+  const pos    = (c.sends||[]).filter(s => s.response === 'positive').length;
+  const neg    = (c.sends||[]).filter(s => s.response === 'negative').length;
+  const rate   = total ? Math.round(pos / total * 100) : 0;
+  const targets = (c.targetCompanies||[]).length;
+  const replies = (c.replies||[]);
+
+  // Target companies list
+  const targetList = (c.targetCompanies||[]).map(tid => {
+    const co = companies.find(x => String(x.id) === String(tid));
+    if (!co) return null;
+    const icon = co.response === 'positive' ? '✅' : co.response === 'negative' ? '❌' : '⬜';
+    return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">
+      <span style="font-size:12px">${icon}</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${co.name}</div>
+        <div style="font-size:10px;color:var(--muted)">${co.email||'—'}</div>
+      </div>
+      <span style="font-size:10px;color:var(--muted);white-space:nowrap">${co.sector||''}</span>
+    </div>`;
+  }).filter(Boolean);
+
+  // Sends list
+  const sendsHTML = total
+    ? (c.sends||[]).map(s => `
       <div class="send-row">
         <div>
           <div class="send-company">${s.company}</div>
@@ -3919,43 +3938,92 @@ function selectCampaign(id) {
         ${responseBadgeSmall(s.response)}
         <div class="send-date">${s.date}</div>
       </div>`).join('')
-    : `<div style="color:var(--muted);font-size:12px;padding:12px 0">Henüz gönderim yok</div>`;
+    : `<div style="color:var(--muted);font-size:12px;padding:12px 0">Henüz gönderim kaydı yok</div>`;
+
+  // Replies list
+  const repliesHTML = replies.length
+    ? replies.map(r => `
+      <div style="background:var(--surface2);border-radius:8px;padding:12px;margin-bottom:8px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <div style="font-size:12px;font-weight:600;color:var(--text)">${r.company||r.from||'—'}</div>
+          <div style="display:flex;gap:6px;align-items:center">
+            ${r.sentiment === 'positive' ? '<span class="badge badge-green">Olumlu</span>' : r.sentiment === 'negative' ? '<span class="badge badge-red">Olumsuz</span>' : '<span class="badge badge-muted">Nötr</span>'}
+            <span style="font-size:10px;color:var(--muted)">${r.receivedAt||''}</span>
+          </div>
+        </div>
+        <div style="font-size:11px;color:var(--muted2);line-height:1.6">${r.aiSummary||r.body||''}</div>
+      </div>`).join('')
+    : `<div style="color:var(--muted);font-size:12px;padding:12px 0">Henüz dönüş yok — Make/n8n webhook bağlandığında burada görünecek</div>`;
+
+  // Schedule info
+  const sched = c.schedule || {};
+  const schedHTML = sched.startDate ? `
+    <div style="display:flex;gap:8px;flex-wrap:wrap;font-size:11px;color:var(--muted2)">
+      <span>📅 ${sched.startDate}</span>
+      ${sched.endDate ? `<span>→ ${sched.endDate}</span>` : ''}
+      <span>· ${sched.dailyLimit||100} mail/gün</span>
+    </div>` : '';
 
   col.innerHTML = `
     <div class="camp-detail-scroll">
+
+      <!-- Header -->
       <div class="camp-detail-header">
-        <div>
+        <div style="flex:1;min-width:0">
           <div class="camp-detail-title">${c.name}</div>
           <div class="camp-detail-subject">📧 ${c.subject}</div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">
             ${campStatusBadge(c.status)}
-            <span class="badge badge-muted">🎯 ${segLabels[c.segment]||c.segment}</span>
+            ${c.senderEmail ? `<span class="badge badge-muted">📤 ${c.senderName||c.senderEmail}</span>` : ''}
             ${c.sentAt ? `<span class="badge badge-muted">📅 ${c.sentAt}</span>` : ''}
           </div>
+          ${schedHTML ? `<div style="margin-top:6px">${schedHTML}</div>` : ''}
         </div>
-        <div style="display:flex;gap:8px;flex-shrink:0">
-          ${c.status === 'draft' ? `<button class="btn btn-primary" style="font-size:11px;padding:8px 14px">▶ Gönder</button>` : ''}
+        <div style="display:flex;gap:8px;flex-shrink:0;flex-direction:column;align-items:flex-end">
+          ${c.status === 'draft' || c.status === 'scheduled' ? `<button class="btn btn-primary" style="font-size:11px;padding:8px 14px">▶ Gönder</button>` : ''}
           <button class="btn btn-ghost" style="font-size:11px;padding:8px 14px" onclick="openEditCampaignModal('${c.id}')">✎ Düzenle</button>
+          ${can('campaigns','delete') ? `<button class="btn btn-ghost" style="font-size:11px;padding:8px 14px;color:var(--red)" onclick="deleteCampaign()">🗑 Sil</button>` : ''}
         </div>
       </div>
 
+      <!-- KPIler -->
       <div class="camp-kpi-row">
+        <div class="camp-kpi"><div class="camp-kpi-val">${targets}</div><div class="camp-kpi-lbl">Hedef</div></div>
         <div class="camp-kpi"><div class="camp-kpi-val">${total}</div><div class="camp-kpi-lbl">Gönderim</div></div>
         <div class="camp-kpi"><div class="camp-kpi-val" style="color:var(--green)">${pos}</div><div class="camp-kpi-lbl">Olumlu</div></div>
         <div class="camp-kpi"><div class="camp-kpi-val" style="color:var(--red)">${neg}</div><div class="camp-kpi-lbl">Olumsuz</div></div>
         <div class="camp-kpi"><div class="camp-kpi-val" style="color:var(--accent2)">%${rate}</div><div class="camp-kpi-lbl">Dönüşüm</div></div>
+        <div class="camp-kpi"><div class="camp-kpi-val" style="color:var(--accent)">${replies.length}</div><div class="camp-kpi-lbl">Cevap</div></div>
       </div>
 
+      <!-- Dönüşler -->
+      <div>
+        <div class="camp-section-title">Dönüşler (${replies.length})</div>
+        ${repliesHTML}
+      </div>
+
+      <!-- Hedef Şirketler -->
+      <div>
+        <div class="camp-section-title" style="display:flex;align-items:center;justify-content:space-between">
+          <span>Hedef Şirketler (${targets})</span>
+        </div>
+        ${targetList.length ? `<div style="max-height:200px;overflow-y:auto">${targetList.join('')}</div>` : `<div style="color:var(--muted);font-size:12px;padding:12px 0">Hedef şirket seçilmemiş</div>`}
+      </div>
+
+      <!-- Gönderim Listesi -->
+      <div>
+        <div class="camp-section-title">Gönderim Kaydı (${total})</div>
+        ${sendsHTML}
+      </div>
+
+      <!-- Mail Önizlemesi -->
       <div>
         <div class="camp-section-title">Mail Önizlemesi</div>
         <div style="background:var(--surface2);border-radius:10px;padding:16px;font-size:12px;color:var(--muted2);line-height:1.7;white-space:pre-wrap">${c.body}</div>
       </div>
 
-      <div>
-        <div class="camp-section-title">Gönderim Listesi (${total})</div>
-        ${sendsHTML}
-      </div>
     </div>`;
+}
 }
 
 // ── CAMPAIGN WIZARD ──
