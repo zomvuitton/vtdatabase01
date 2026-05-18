@@ -1741,46 +1741,100 @@ window.dbgLog = function(msg) {
     </div><!-- /screen-campaigns -->
 
     <!-- MODAL: Yeni Kampanya -->
-    <div class="modal-overlay" id="newCampModal" onclick="closeModalOutside(event)">
-      <div class="modal">
+    <div class="modal-overlay" id="newCampModal" onclick="if(event.target===this)closeNewCampaignModal()">
+      <div class="modal" style="max-width:600px;width:95vw;max-height:90vh;display:flex;flex-direction:column">
         <div class="modal-title">
-          Yeni Kampanya
-          <button class="modal-close" onclick="closeNewCampaignModal()">✕</button>
+          <span id="campWizardTitle">Yeni Kampanya</span>
+          <div style="display:flex;align-items:center;gap:10px;margin-left:auto">
+            <span style="font-size:11px;color:var(--muted)" id="campWizardStep">Adım 1 / 3</span>
+            <button class="modal-close" onclick="closeNewCampaignModal()">✕</button>
+          </div>
         </div>
-        <div class="form-group">
-          <label class="form-label">Kampanya Adı</label>
-          <input class="form-input" id="newCampName" placeholder="Q2 Tanıtım Kampanyası">
+
+        <!-- Progress bar -->
+        <div style="height:2px;background:var(--surface2);flex-shrink:0">
+          <div id="campWizardProgress" style="height:100%;background:var(--accent);transition:width .3s;width:33%"></div>
         </div>
-        <div class="form-group">
-          <label class="form-label">Mail Konusu</label>
-          <input class="form-input" id="newCampSubject" placeholder="Şirketiniz için özel bir teklif...">
+
+        <!-- Step 1: Temel Bilgiler -->
+        <div id="campStep1" style="flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:14px">
+          <div class="form-group">
+            <label class="form-label">Kampanya Adı *</label>
+            <input class="form-input" id="newCampName" placeholder="Q2 Tanıtım Kampanyası">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Mail Konusu *</label>
+            <input class="form-input" id="newCampSubject" placeholder="Şirketiniz için özel bir teklif...">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Gönderen Adı</label>
+            <input class="form-input" id="newCampSenderName" placeholder="Atahan - AK Harman">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Gönderen Mail</label>
+            <input class="form-input" id="newCampSenderEmail" placeholder="info@akharman.com">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Mail İçeriği *</label>
+            <textarea class="form-textarea" id="newCampBody" style="min-height:140px" placeholder="Sayın yetkili,&#10;&#10;..."></textarea>
+          </div>
         </div>
-        <div class="form-group">
-          <label class="form-label">Mail İçeriği</label>
-          <textarea class="form-textarea" id="newCampBody" placeholder="Sayın yetkili,&#10;&#10;..."></textarea>
+
+        <!-- Step 2: Hedef Şirketler -->
+        <div id="campStep2" style="flex:1;overflow:hidden;display:none;flex-direction:column">
+          <div style="padding:14px 20px 10px;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:8px;flex-shrink:0">
+            <div style="display:flex;gap:8px;align-items:center">
+              <input class="search-input" id="campCompSearch" style="flex:1;font-size:12px" placeholder="Şirket ara..." oninput="filterCampCompanies()">
+              <span id="campSelCount" style="font-size:11px;color:var(--accent);white-space:nowrap;font-family:var(--font-mono)">0 seçili</span>
+            </div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              <div class="filter-chip active" onclick="setCampCompFilter('all',this)" style="font-size:10px;padding:3px 9px">Tümü</div>
+              <div class="filter-chip" onclick="setCampCompFilter('none',this)" style="font-size:10px;padding:3px 9px">Yanıtsız</div>
+              <div class="filter-chip" onclick="setCampCompFilter('positive',this)" style="font-size:10px;padding:3px 9px">Olumlu</div>
+              <div class="filter-chip" onclick="setCampCompFilter('negative',this)" style="font-size:10px;padding:3px 9px">Olumsuz</div>
+              <div class="filter-chip" onclick="setCampCompFilter('dirty',this)" style="font-size:10px;padding:3px 9px">Kirli Veri</div>
+            </div>
+          </div>
+          <div style="padding:6px 16px;border-bottom:1px solid var(--border);display:flex;gap:10px;flex-shrink:0">
+            <button onclick="selectAllCampCompanies()" style="background:none;border:none;color:var(--accent);font-size:11px;cursor:pointer;font-family:var(--font-mono)">Tümünü Seç</button>
+            <button onclick="deselectAllCampCompanies()" style="background:none;border:none;color:var(--muted);font-size:11px;cursor:pointer;font-family:var(--font-mono)">Seçimi Kaldır</button>
+          </div>
+          <div id="campCompList" style="flex:1;overflow-y:auto;padding:8px 16px"></div>
         </div>
-        <div class="form-row">
+
+        <!-- Step 3: Zamanlama -->
+        <div id="campStep3" style="flex:1;overflow-y:auto;padding:20px;display:none;flex-direction:column;gap:14px">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Başlangıç Tarihi</label>
+              <input class="form-input" type="date" id="newCampStartDate">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Bitiş Tarihi</label>
+              <input class="form-input" type="date" id="newCampEndDate">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Günlük Gönderim Limiti</label>
+            <input class="form-input" type="number" id="newCampDailyLimit" placeholder="100" min="1" max="500">
+            <div style="font-size:10px;color:var(--muted);margin-top:4px">Brevo ücretsiz: 300/gün. Spam filtresini aşmak için düşük tutmanız önerilir.</div>
+          </div>
           <div class="form-group">
             <label class="form-label">Durum</label>
             <select class="form-select" id="newCampStatus">
               <option value="draft">Taslak</option>
               <option value="scheduled">Planlandı</option>
-              <option value="sent">Gönderildi</option>
             </select>
           </div>
-          <div class="form-group">
-            <label class="form-label">Hedef Segment</label>
-            <select class="form-select" id="newCampSegment">
-              <option value="all">Tüm Şirketler</option>
-              <option value="positive">Olumlu Dönüşler</option>
-              <option value="none">Dönüş Vermeyenler</option>
-              <option value="clean">Temiz Veri</option>
-            </select>
-          </div>
+          <!-- Özet -->
+          <div id="campSummary" style="background:var(--surface2);border-radius:var(--radius);padding:14px;font-size:12px;color:var(--muted2);line-height:1.8"></div>
         </div>
-        <div class="modal-actions">
-          <button class="btn btn-ghost" onclick="closeNewCampaignModal()">İptal</button>
-          <button class="btn btn-primary" onclick="createCampaign()">Kampanya Oluştur</button>
+
+        <!-- Footer -->
+        <div class="modal-actions" style="flex-shrink:0;border-top:1px solid var(--border);padding:14px 20px">
+          <button class="btn btn-ghost" id="campWizardBack" onclick="campWizardPrev()" style="display:none">← Geri</button>
+          <button class="btn btn-ghost" onclick="closeNewCampaignModal()" id="campWizardCancel">İptal</button>
+          <button class="btn btn-primary" id="campWizardNext" onclick="campWizardNext()">İleri →</button>
         </div>
       </div>
     </div>
@@ -3904,26 +3958,194 @@ function selectCampaign(id) {
     </div>`;
 }
 
-function openNewCampaignModal()  { if (!can('campaigns','add')) { noPermToast(); return; } document.getElementById('newCampModal').classList.add('open'); }
-function closeNewCampaignModal() { document.getElementById('newCampModal').classList.remove('open'); }
-function closeModalOutside(e)    { if (e.target === document.getElementById('newCampModal')) closeNewCampaignModal(); }
+// ── CAMPAIGN WIZARD ──
+let campWizardCurrentStep = 1;
+let campSelectedCompanies = new Set();
+let campCompFilter = 'all';
+
+function openNewCampaignModal() {
+  if (!can('campaigns','add')) { noPermToast(); return; }
+  campWizardCurrentStep = 1;
+  campSelectedCompanies = new Set();
+  campCompFilter = 'all';
+  // Reset fields
+  ['newCampName','newCampSubject','newCampBody','newCampSenderName','newCampSenderEmail'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  document.getElementById('newCampDailyLimit').value = '100';
+  document.getElementById('newCampStatus').value = 'draft';
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('newCampStartDate').value = today;
+  document.getElementById('newCampEndDate').value = '';
+  updateCampWizardUI();
+  document.getElementById('newCampModal').classList.add('open');
+}
+
+function closeNewCampaignModal() {
+  document.getElementById('newCampModal').classList.remove('open');
+}
+
+function updateCampWizardUI() {
+  const step = campWizardCurrentStep;
+  const titles = ['Temel Bilgiler', 'Hedef Şirketler', 'Zamanlama & Özet'];
+  document.getElementById('campWizardTitle').textContent = titles[step - 1];
+  document.getElementById('campWizardStep').textContent = `Adım ${step} / 3`;
+  document.getElementById('campWizardProgress').style.width = `${step * 33.3}%`;
+  document.getElementById('campStep1').style.display = step === 1 ? 'flex' : 'none';
+  document.getElementById('campStep2').style.display = step === 2 ? 'flex' : 'none';
+  document.getElementById('campStep3').style.display = step === 3 ? 'flex' : 'none';
+  document.getElementById('campWizardBack').style.display = step > 1 ? 'inline-flex' : 'none';
+  document.getElementById('campWizardNext').textContent = step === 3 ? '✓ Oluştur' : 'İleri →';
+  if (step === 2) renderCampCompList();
+  if (step === 3) renderCampSummary();
+}
+
+function campWizardNext() {
+  if (campWizardCurrentStep === 1) {
+    const name = document.getElementById('newCampName').value.trim();
+    const subject = document.getElementById('newCampSubject').value.trim();
+    const body = document.getElementById('newCampBody').value.trim();
+    if (!name) { document.getElementById('newCampName').focus(); showToast('Kampanya adı zorunlu'); return; }
+    if (!subject) { document.getElementById('newCampSubject').focus(); showToast('Mail konusu zorunlu'); return; }
+    if (!body) { document.getElementById('newCampBody').focus(); showToast('Mail içeriği zorunlu'); return; }
+    campWizardCurrentStep = 2;
+    updateCampWizardUI();
+  } else if (campWizardCurrentStep === 2) {
+    if (campSelectedCompanies.size === 0) { showToast('En az 1 şirket seç'); return; }
+    campWizardCurrentStep = 3;
+    updateCampWizardUI();
+  } else if (campWizardCurrentStep === 3) {
+    createCampaign();
+  }
+}
+
+function campWizardPrev() {
+  if (campWizardCurrentStep > 1) {
+    campWizardCurrentStep--;
+    updateCampWizardUI();
+  }
+}
+
+function setCampCompFilter(filter, el) {
+  campCompFilter = filter;
+  document.querySelectorAll('#campStep2 .filter-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  renderCampCompList();
+}
+
+function filterCampCompanies() { renderCampCompList(); }
+
+function renderCampCompList() {
+  const search = (document.getElementById('campCompSearch')?.value || '').toLowerCase();
+  let list = companies.filter(c => {
+    if (search && !c.name.toLowerCase().includes(search)) return false;
+    if (campCompFilter === 'none') return !c.response || c.response === 'none';
+    if (campCompFilter === 'positive') return c.response === 'positive';
+    if (campCompFilter === 'negative') return c.response === 'negative';
+    if (campCompFilter === 'dirty') return c.quality === 'dirty' || c.quality === 'incomplete';
+    return true;
+  });
+  const container = document.getElementById('campCompList');
+  if (!container) return;
+  if (list.length === 0) {
+    container.innerHTML = '<div style="text-align:center;color:var(--muted);font-size:12px;padding:20px">Şirket bulunamadı</div>';
+    return;
+  }
+  container.innerHTML = list.map(c => {
+    const checked = campSelectedCompanies.has(String(c.id));
+    const responseIcon = c.response === 'positive' ? '✅' : c.response === 'negative' ? '❌' : '⬜';
+    return `<div onclick="toggleCampCompany('${c.id}')" style="display:flex;align-items:center;gap:10px;padding:8px 4px;border-bottom:1px solid var(--border);cursor:pointer;border-radius:6px;transition:background .1s" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+      <div style="width:18px;height:18px;border:1.5px solid ${checked?'var(--accent)':'var(--border)'};border-radius:4px;background:${checked?'var(--accent)':'transparent'};display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s">
+        ${checked ? '<span style="color:#fff;font-size:11px">✓</span>' : ''}
+      </div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.name}</div>
+        <div style="font-size:10px;color:var(--muted)">${c.sector||'—'} · ${c.email||'mail yok'}</div>
+      </div>
+      <span style="font-size:13px">${responseIcon}</span>
+    </div>`;
+  }).join('');
+  document.getElementById('campSelCount').textContent = `${campSelectedCompanies.size} seçili`;
+}
+
+function toggleCampCompany(id) {
+  const sid = String(id);
+  if (campSelectedCompanies.has(sid)) campSelectedCompanies.delete(sid);
+  else campSelectedCompanies.add(sid);
+  renderCampCompList();
+}
+
+function selectAllCampCompanies() {
+  const search = (document.getElementById('campCompSearch')?.value || '').toLowerCase();
+  companies.filter(c => {
+    if (search && !c.name.toLowerCase().includes(search)) return false;
+    if (campCompFilter === 'none') return !c.response || c.response === 'none';
+    if (campCompFilter === 'positive') return c.response === 'positive';
+    if (campCompFilter === 'negative') return c.response === 'negative';
+    if (campCompFilter === 'dirty') return c.quality === 'dirty' || c.quality === 'incomplete';
+    return true;
+  }).forEach(c => campSelectedCompanies.add(String(c.id)));
+  renderCampCompList();
+}
+
+function deselectAllCampCompanies() {
+  campSelectedCompanies.clear();
+  renderCampCompList();
+}
+
+function renderCampSummary() {
+  const name = document.getElementById('newCampName').value.trim();
+  const subject = document.getElementById('newCampSubject').value.trim();
+  const startDate = document.getElementById('newCampStartDate').value;
+  const endDate = document.getElementById('newCampEndDate').value;
+  const dailyLimit = document.getElementById('newCampDailyLimit').value || 100;
+  const status = document.getElementById('newCampStatus').value;
+  const statusLabel = status === 'draft' ? 'Taslak' : 'Planlandı';
+  const totalDays = startDate && endDate ? Math.max(1, Math.ceil((new Date(endDate)-new Date(startDate))/(1000*60*60*24))+1) : '—';
+  const el = document.getElementById('campSummary');
+  if (!el) return;
+  el.innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <div><span style="color:var(--muted)">Kampanya:</span> <strong style="color:var(--text)">${name}</strong></div>
+      <div><span style="color:var(--muted)">Konu:</span> ${subject}</div>
+      <div><span style="color:var(--muted)">Hedef:</span> <strong style="color:var(--accent)">${campSelectedCompanies.size} şirket</strong></div>
+      <div><span style="color:var(--muted)">Başlangıç:</span> ${startDate || '—'}</div>
+      <div><span style="color:var(--muted)">Bitiş:</span> ${endDate || '—'}</div>
+      <div><span style="color:var(--muted)">Günlük limit:</span> ${dailyLimit} mail</div>
+      <div><span style="color:var(--muted)">Süre:</span> ${totalDays} gün</div>
+      <div><span style="color:var(--muted)">Durum:</span> ${statusLabel}</div>
+    </div>`;
+}
 
 function createCampaign() {
   if (!can('campaigns','add')) { noPermToast(); return; }
-  const name    = document.getElementById('newCampName').value.trim();
-  const subject = document.getElementById('newCampSubject').value.trim();
-  const body    = document.getElementById('newCampBody').value.trim();
-  const status  = document.getElementById('newCampStatus').value;
-  const segment = document.getElementById('newCampSegment').value;
-  if (!name) { document.getElementById('newCampName').focus(); return; }
-  const now     = new Date();
+  const name        = document.getElementById('newCampName').value.trim();
+  const subject     = document.getElementById('newCampSubject').value.trim();
+  const body        = document.getElementById('newCampBody').value.trim();
+  const senderName  = document.getElementById('newCampSenderName').value.trim();
+  const senderEmail = document.getElementById('newCampSenderEmail').value.trim();
+  const status      = document.getElementById('newCampStatus').value;
+  const startDate   = document.getElementById('newCampStartDate').value;
+  const endDate     = document.getElementById('newCampEndDate').value;
+  const dailyLimit  = parseInt(document.getElementById('newCampDailyLimit').value) || 100;
+  if (!name) return;
+  const now = new Date();
   const dateStr = now.toLocaleDateString('tr-TR', { day:'2-digit', month:'short', year:'numeric' });
-  campaigns.unshift({ id: Date.now(), name, subject, body, status, segment, sentAt: status==='sent'?dateStr:null, sends: [] });
+  campaigns.unshift({
+    id: Date.now(),
+    name, subject, body, status,
+    senderName, senderEmail,
+    targetCompanies: Array.from(campSelectedCompanies),
+    schedule: { startDate, endDate, dailyLimit },
+    sentAt: status === 'sent' ? dateStr : null,
+    sends: [],
+    replies: [],
+  });
   saveToStorage();
-  addLog('add','campaigns', `"${name}" kampanyası oluşturuldu`);
+  addLog('add', 'campaigns', `"${name}" kampanyası oluşturuldu (${campSelectedCompanies.size} hedef)`);
   closeNewCampaignModal();
   renderCampList();
-  ['newCampName','newCampSubject','newCampBody'].forEach(id => document.getElementById(id).value = '');
+  showToast(`✓ Kampanya oluşturuldu — ${campSelectedCompanies.size} hedef şirket`);
 }
 
 // ── STATE ──
